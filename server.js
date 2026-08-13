@@ -1,9 +1,9 @@
+import dotenv from 'dotenv';
+dotenv.config(); // Must be called BEFORE importing route handlers!
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import itemsRouter from './routes/items.js';
-
-dotenv.config();
 
 const app = express();
 
