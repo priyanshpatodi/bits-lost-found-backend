@@ -1,40 +1,24 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import authRoutes from "./routes/auth.js";
-import itemsRoutes from "./routes/items.js";
-import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import itemsRouter from './routes/items.js';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 10000;
 
-const allowedOrigin = process.env.ALLOWED_ORIGIN || "*";
-
-app.use(
-  cors({
-    origin: allowedOrigin === "*" ? "*" : allowedOrigin.split(","),
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
 app.use(express.json());
 
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    status: "ok",
-    message: "BITS Lost & Found API is running.",
-    timestamp: new Date().toISOString(),
-  });
+// Health Check Endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'BITS Lost & Found API is healthy' });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/api/items", itemsRoutes);
+// Main API Routes
+app.use('/api/items', itemsRouter);
 
-app.use(notFoundHandler);
-app.use(errorHandler);
-
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`BITS Lost & Found API listening on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

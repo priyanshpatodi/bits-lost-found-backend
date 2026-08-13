@@ -1,105 +1,34 @@
-import { Router } from "express";
-import { randomUUID } from "crypto";
-import mockItems from "../data/mockItems.js";
+import express from 'express';
+import { supabase } from '../config/supabase.js';
 
-const router = Router();
+const router = express.Router();
 
-let items = [...mockItems];
+// GET /api/items - Fetch items directly from Supabase
+router.get('/', async (req, res, next) => {
+  try {
+    const { type, location, campus } = req.query;
 
-router.get("/", (req, res) => {
-  const { type, location, campus, status = "active" } = req.query;
+    let query = supabase.from('items').select('*').order('created_at', { ascending: false });
 
-  let filtered = items;
+    if (type) query = query.eq('type', type);
+    if (location) query = query.ilike('location', `%${location}%`);
+    if (campus) query = query.eq('campus', campus);
 
-  if (status) {
-    filtered = filtered.filter((item) => item.status === status);
-  }
+    const { data: items, error } = await query;
 
-  if (type) {
-    filtered = filtered.filter((item) => item.type === type);
-  }
+    if (error) {
+      console.error("Supabase Error:", error);
+      throw error;
+    }
 
-  if (location) {
-    filtered = filtered.filter(
-      (item) => item.location.toLowerCase() === location.toLowerCase()
-    );
-  }
-
-  if (campus) {
-    filtered = filtered.filter(
-      (item) => item.campus.toLowerCase() === campus.toLowerCase()
-    );
-  }
-
-  return res.status(200).json({
-    success: true,
-    count: filtered.length,
-    items: filtered,
-  });
-});
-
-router.post("/", (req, res) => {
-  const {
-    title,
-    description,
-    type,
-    category,
-    location,
-    campus,
-    reportedBy,
-    contactEmail,
-    imageUrl = null,
-  } = req.body;
-
-  if (
-    !title ||
-    !description ||
-    !type ||
-    !category ||
-    !location ||
-    !campus ||
-    !reportedBy ||
-    !contactEmail
-  ) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Required fields: title, description, type, category, location, campus, reportedBy, contactEmail.",
+    res.json({
+      success: true,
+      count: items.length,
+      items
     });
+  } catch (error) {
+    next(error);
   }
-
-  if (!["lost", "found"].includes(type)) {
-    return res.status(400).json({
-      success: false,
-      message: "Type must be either 'lost' or 'found'.",
-    });
-  }
-
-  const now = new Date().toISOString();
-
-  const newItem = {
-    id: `item-${randomUUID().slice(0, 8)}`,
-    title: title.trim(),
-    description: description.trim(),
-    type,
-    category: category.trim(),
-    location: location.trim(),
-    campus: campus.trim(),
-    status: "active",
-    reportedBy: reportedBy.trim(),
-    contactEmail: contactEmail.trim(),
-    imageUrl,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  items.unshift(newItem);
-
-  return res.status(201).json({
-    success: true,
-    message: "Item reported successfully.",
-    item: newItem,
-  });
 });
 
 export default router;
