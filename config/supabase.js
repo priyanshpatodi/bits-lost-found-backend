@@ -1,5 +1,3 @@
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
@@ -13,5 +11,10 @@ if (!supabaseUrl) {
   throw new Error("SUPABASE_URL environment variable is missing.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false, // Disables AsyncStorage for the Node.js backend
+  },
+});
+
 export default supabase;
