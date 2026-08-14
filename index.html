@@ -3,227 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BITS Lost & Found Portal</title>
-    <!-- Tailwind CSS CDN -->
+    <title>BITS Lost & Found • Pilani Campus</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Supabase JS Client -->
+    <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        bitsNavy: '#0F172A',
-                        bitsGold: '#D97706',
-                    }
+                    colors: { bitsNavy: '#0A2540', bitsGold: '#D4AF37', bitsBg: '#F8F9FA' }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
-
-    <!-- Top Header -->
-    <header id="app-header" class="bg-bitsNavy text-white sticky top-0 z-40 shadow-md hidden">
-        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <div class="bg-bitsGold text-bitsNavy font-extrabold text-xs px-2 py-1 rounded-lg">BITS</div>
-                <h1 class="font-bold text-sm tracking-wide">Lost & Found Portal</h1>
+<body class="bg-bitsBg text-bitsNavy min-h-screen flex flex-col font-sans select-none">
+    
+    <!-- Top App Bar -->
+    <header id="app-header" class="bg-bitsNavy text-white px-4 py-3 shadow-md sticky top-0 z-50 flex justify-between items-center hidden">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-full bg-bitsGold flex items-center justify-center text-bitsNavy font-bold text-sm shadow">BP</div>
+            <div>
+                <h1 id="header-title" class="font-bold text-base leading-tight">BITS Lost & Found</h1>
+                <p id="header-subtitle" class="text-[10px] text-gray-300 tracking-wider uppercase">Pilani Campus</p>
             </div>
-            <button onclick="switchScreen('profile')" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full border border-slate-700 transition">
-                <i class="fa-solid fa-user-shield mr-1"></i> Account
-            </button>
         </div>
+        <button onclick="handleLogout()" class="text-xs bg-red-500 text-white px-3 py-1.5 rounded-full font-semibold shadow hover:bg-red-600 transition">Logout</button>
     </header>
 
-    <!-- Main App Container -->
-    <main class="max-w-md w-full mx-auto flex-grow flex flex-col pb-20">
-
-        <!-- 1. AUTH SCREEN -->
-        <div id="screen-auth" class="screen-view flex flex-col justify-center flex-grow p-6">
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-2xl mx-auto flex items-center justify-center text-2xl font-black shadow-lg mb-4">
-                    BITS
+    <main class="flex-grow max-w-md mx-auto w-full p-4 pb-24">
+        
+        <!-- ================= 1. AUTH SCREEN ================= -->
+        <section id="screen-auth" class="screen-view flex flex-col justify-center min-h-[85vh]">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-2xl mx-auto flex items-center justify-center text-2xl font-black mb-3 shadow-inner">BITS</div>
+                    <h2 class="text-xl font-bold text-bitsNavy">Portal Sign In</h2>
+                    <p class="text-xs text-gray-500 mt-1">Student or Admin @bits-pilani.ac.in credentials</p>
                 </div>
-                <h2 class="text-xl font-extrabold text-bitsNavy">Campus Portal</h2>
-                <p class="text-xs text-gray-500 mt-1">Sign in with your BITS mail or admin account</p>
+                <form onsubmit="handleAuth(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">BITS Email Address</label>
+                        <input type="email" id="auth-email" required placeholder="f20230000@pilani.bits-pilani.ac.in" class="w-full px-3 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-bitsNavy">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Password</label>
+                        <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-bitsNavy">
+                    </div>
+                    <div id="auth-error" class="text-red-500 text-[11px] text-center hidden"></div>
+                    <button type="submit" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-opacity-90 transition">Login to Portal</button>
+                </form>
             </div>
+        </section>
 
-            <form onsubmit="handleAuth(event)" class="space-y-4 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Email Address</label>
-                    <input type="email" id="auth-email" required placeholder="f20230123@pilani.bits-pilani.ac.in" class="w-full px-3 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Password</label>
-                    <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                </div>
-                <div id="auth-error" class="text-[11px] text-red-500 font-medium hidden"></div>
-                <button type="submit" class="w-full bg-bitsNavy text-white py-3 rounded-xl font-bold text-xs shadow-md hover:bg-opacity-90 transition">
-                    Sign In
-                </button>
-            </form>
-            <div class="mt-4 text-center">
-                <p class="text-[10px] text-gray-400">Admin accounts start with "admin" (Pass: admin123)</p>
-            </div>
-        </div>
-
-        <!-- 2. HOME SCREEN (FEED) -->
-        <div id="screen-home" class="screen-view hidden p-4 space-y-4">
-            <!-- Search & Filters -->
+        <!-- ================= 2. HOME / FEED SCREEN ================= -->
+        <section id="screen-home" class="screen-view hidden space-y-4">
             <div class="flex gap-2">
-                <div class="relative flex-grow">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400 text-xs"></i>
-                    <input type="text" id="search-input" oninput="filterItems()" placeholder="Search items..." class="w-full pl-9 pr-3 py-2 bg-white text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                </div>
-                <select id="filter-type" onchange="filterItems()" class="bg-white text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                    <option value="all">All Types</option>
+                <input type="text" id="search-input" oninput="filterItems()" placeholder="Search items or locations..." class="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none">
+                <select id="filter-type" onchange="filterItems()" class="bg-white border border-gray-200 text-xs px-3 py-2 rounded-xl shadow-sm font-medium">
+                    <option value="all">All</option>
                     <option value="lost">Lost</option>
                     <option value="found">Found</option>
                 </select>
             </div>
-
-            <!-- Items Feed -->
             <div id="items-feed" class="space-y-3">
-                <!-- Dynamically Populated -->
+                <div class="bg-white p-6 rounded-2xl text-center text-xs text-gray-400">Loading campus items from Supabase...</div>
             </div>
-        </div>
+        </section>
 
-        <!-- 3. REPORT SCREEN -->
-        <div id="screen-report" class="screen-view hidden p-4">
-            <h2 class="text-sm font-extrabold text-bitsNavy mb-4">Post Lost or Found Item</h2>
-            <form onsubmit="handleReportSubmit(event)" class="space-y-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
-                    <button type="button" id="btn-type-lost" onclick="setReportType('lost')" class="py-2 text-xs font-bold rounded-xl border border-red-500 bg-red-50 text-red-600">Lost Item</button>
-                    <button type="button" id="btn-type-found" onclick="setReportType('found')" class="py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600">Found Item</button>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Item Title</label>
-                    <input type="text" id="report-title" required placeholder="e.g. Apple MacBook Air M1" class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Last Seen / Found Location</label>
-                    <input type="text" id="report-location" required placeholder="e.g. NAB Audi 2" class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Description</label>
-                    <textarea id="report-desc" rows="3" required placeholder="Provide color, serial number or distinctive features..." class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Upload Photo (Optional)</label>
-                    <input type="file" id="report-image" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-bitsNavy file:text-white hover:file:bg-opacity-90">
-                </div>
-                <button type="submit" id="submit-btn" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl font-bold text-xs shadow hover:bg-opacity-90 transition">
-                    Publish Listing
-                </button>
-            </form>
-        </div>
+        <!-- ================= 3. REPORT SCREEN ================= -->
+        <section id="screen-report" class="screen-view hidden space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="font-bold text-sm text-bitsNavy mb-1">Post Lost or Found Item</h2>
+                <p class="text-[11px] text-gray-400 mb-4">Provide details to help your campus community.</p>
+                <form onsubmit="handleReportSubmit(event)" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="setReportType('lost')" id="btn-type-lost" class="py-2 text-xs font-bold rounded-xl border border-red-500 bg-red-50 text-red-600">Lost</button>
+                        <button type="button" onclick="setReportType('found')" id="btn-type-found" class="py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600">Found</button>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Item Title</label>
+                        <input type="text" id="report-title" required placeholder="e.g., CASIO Calculator / ID Card" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Location on Campus</label>
+                        <input type="text" id="report-location" required placeholder="e.g., NAB, ANC, Library, Rotunda" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Detailed Description</label>
+                        <textarea id="report-desc" rows="3" required placeholder="Describe distinguishing marks, color, brand..." class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Photo Attachment (.jpg / .jpeg only)</label>
+                        <input type="file" id="report-image" accept=".jpg, .jpeg" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-bitsNavy file:text-white hover:file:bg-opacity-90">
+                    </div>
+                    <button type="submit" id="submit-btn" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md">Publish Listing</button>
+                </form>
+            </div>
+        </section>
 
-        <!-- 4. CHAT LIST SCREEN -->
-        <div id="screen-chats" class="screen-view hidden p-4 space-y-3">
-            <h2 class="text-sm font-extrabold text-bitsNavy mb-2">Secure Conversations</h2>
-            <div id="chats-list-container" class="space-y-2">
-                <!-- Dynamically Populated -->
+        <!-- ================= 4. PROFILE SCREEN ================= -->
+        <section id="screen-profile" class="screen-view hidden space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border text-center">
+                <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-full mx-auto flex items-center justify-center text-xl font-bold mb-3"><span id="profile-initials">BP</span></div>
+                <h2 id="profile-email" class="font-bold text-xs text-bitsNavy">Not Logged In</h2>
+                <p id="profile-role" class="text-[10px] text-gray-400 mt-0.5">Verified BITSian</p>
+                <button onclick="handleLogout()" class="w-full mt-6 bg-red-50 text-red-600 border border-red-200 py-2 rounded-xl text-xs font-bold">Logout</button>
             </div>
-        </div>
+        </section>
 
-        <!-- 5. ACTIVE CHAT ROOM SCREEN -->
-        <div id="screen-chat" class="screen-view hidden flex flex-col h-[80vh] p-4">
-            <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 mb-2 flex items-center justify-between">
-                <button onclick="switchScreen('chats')" class="text-xs text-gray-500 font-bold"><i class="fa-solid fa-arrow-left mr-1"></i> Back</button>
-                <h3 id="chat-item-title" class="font-bold text-xs text-bitsNavy">Chat Room</h3>
-                <div></div>
+        <!-- ================= 5. ADMIN CONTROL PANEL SCREEN ================= -->
+        <section id="screen-admin" class="screen-view hidden space-y-4">
+            <div class="bg-red-50 border border-red-200 p-4 rounded-2xl">
+                <div class="flex items-center gap-2 text-red-700 font-bold text-xs mb-1">
+                    <i class="fa-solid fa-shield-halved"></i> Campus Administrator Control Panel
+                </div>
+                <p class="text-[11px] text-red-600">Moderate posts, delete listings, and audit active student chats below.</p>
             </div>
-            <div id="chat-messages" class="flex-grow bg-white p-3 rounded-2xl shadow-sm border border-gray-100 overflow-y-auto space-y-2 text-xs mb-2">
-                <!-- Messages -->
-            </div>
-            <div class="flex gap-2">
-                <input type="text" id="chat-input" placeholder="Type a secure message..." class="flex-grow px-3 py-2 text-xs bg-white rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
-                <button onclick="sendChatMessage()" class="bg-bitsNavy text-white px-4 py-2 rounded-xl text-xs font-bold shadow">Send</button>
-            </div>
-        </div>
 
-        <!-- 6. ADMIN SCREEN -->
-        <div id="screen-admin" class="screen-view hidden p-4 space-y-4">
-            <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl">
-                <h2 class="text-xs font-extrabold text-amber-800"><i class="fa-solid fa-shield-halved mr-1"></i> Administrator Control Center</h2>
-                <p class="text-[10px] text-amber-700 mt-0.5">Manage reported posts and audit discussions.</p>
-            </div>
+            <!-- Posts Management -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
-                <h3 class="font-bold text-xs text-bitsNavy border-b pb-2">Active Database Posts</h3>
-                <div id="admin-items-list" class="space-y-2"></div>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
-                <h3 class="font-bold text-xs text-bitsNavy border-b pb-2">Platform Chat Audits</h3>
-                <div id="admin-chats-list" class="space-y-2"></div>
-            </div>
-        </div>
-
-        <!-- 7. PROFILE SCREEN -->
-        <div id="screen-profile" class="screen-view hidden p-4 space-y-4">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
-                <div id="profile-initials" class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-full mx-auto flex items-center justify-center text-lg font-bold shadow mb-3">
-                    --
+                <h3 class="font-bold text-xs text-bitsNavy flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-bitsGold"></i> Active Campus Listings
+                </h3>
+                <div id="admin-items-list" class="space-y-2">
+                    <!-- Admin posts control list injected here -->
                 </div>
-                <h3 id="profile-email" class="font-bold text-xs text-bitsNavy">user@bits-pilani.ac.in</h3>
-                <p id="profile-role" class="text-[10px] text-gray-500 mt-1">Verified BITSian Student</p>
-                <button onclick="handleLogout()" class="mt-4 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold border border-red-200 shadow-sm hover:bg-red-100 transition">
-                    Sign Out
-                </button>
             </div>
-        </div>
+
+            <!-- Chat Auditing Section -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <h3 class="font-bold text-xs text-bitsNavy flex items-center gap-1.5">
+                    <i class="fa-solid fa-comments text-bitsGold"></i> Audited Active Chats
+                </h3>
+                <div id="admin-chats-list" class="space-y-2">
+                    <!-- Admin active chat audits list injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 6. SECURE CHAT SCREEN ================= -->
+        <section id="screen-chat" class="screen-view hidden flex flex-col h-[75vh]">
+            <div class="bg-bitsNavy text-white p-3 rounded-t-2xl flex justify-between items-center shadow">
+                <div>
+                    <h3 id="chat-item-title" class="font-bold text-xs">Secure Item Chat</h3>
+                    <p class="text-[9px] text-bitsGold flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-shield-halved"></i> Admin Monitored in Real-Time
+                    </p>
+                </div>
+                <button onclick="switchScreen(currentUser?.isAdmin ? 'admin' : 'home')" class="text-xs bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg">Back</button>
+            </div>
+            
+            <div id="chat-messages" class="flex-grow bg-white border-x border-gray-100 p-3 overflow-y-auto space-y-2 text-xs">
+                <!-- Chat messages injected here -->
+            </div>
+
+            <div class="bg-gray-50 p-2.5 border border-gray-200 rounded-b-2xl flex gap-2 items-center">
+                <input type="text" id="chat-input" placeholder="Type a secure message..." class="flex-grow px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none">
+                <button onclick="sendChatMessage()" class="bg-bitsNavy text-white px-4 py-2 rounded-xl text-xs font-bold">Send</button>
+            </div>
+        </section>
 
     </main>
 
-    <!-- Item Details Modal -->
-    <div id="item-modal" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-xl relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-sm"></i></button>
-            <div class="flex justify-between items-center pr-6">
-                <h3 id="modal-title" class="font-bold text-sm text-bitsNavy">Item Name</h3>
-                <span id="modal-type-badge" class="text-[10px] px-2.5 py-0.5 rounded-full font-bold">LOST</span>
+    <!-- ================= ITEM DETAILS MODAL ================= -->
+    <div id="item-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-5 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start">
+                <span id="modal-type-badge" class="text-[10px] px-2.5 py-0.5 rounded-full font-bold"></span>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-black"><i class="fa-solid fa-xmark text-base"></i></button>
             </div>
-            <div id="modal-image-container" class="hidden">
-                <img id="modal-image" src="" alt="Item photo" class="w-full h-40 object-cover rounded-xl border">
+            <div id="modal-image-container" class="hidden w-full h-40 bg-gray-100 rounded-xl overflow-hidden">
+                <img id="modal-image" src="" alt="Item photo" class="w-full h-full object-cover">
             </div>
-            <p class="text-xs text-gray-600"><i class="fa-solid fa-location-dot text-bitsGold mr-1"></i> <span id="modal-location">Location</span></p>
-            <p id="modal-desc" class="text-xs text-gray-700 bg-gray-50 p-3 rounded-xl">Description details here...</p>
-            <div class="text-[10px] text-gray-400 flex justify-between pt-1">
-                <span>Posted by: <strong id="modal-contact" class="text-gray-600">User</strong></span>
+            <div>
+                <h3 id="modal-title" class="font-bold text-sm text-bitsNavy"></h3>
+                <p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1 text-gray-400"></i><span id="modal-location"></span></p>
             </div>
-            <button onclick="openChatFromModal()" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl font-bold text-xs shadow hover:bg-opacity-90 transition">
-                <i class="fa-solid fa-comment-dots mr-1"></i> Open Secure Chat
+            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Description</p>
+                <p id="modal-desc" class="text-xs text-gray-700 whitespace-pre-line"></p>
+            </div>
+            <div class="flex justify-between text-[11px] text-gray-500 pt-2 border-t border-gray-100">
+                <span>Posted by: <strong id="modal-contact" class="text-bitsNavy"></strong></span>
+            </div>
+            <button onclick="openChatFromModal()" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-opacity-90 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-comments"></i> Chat with Poster (Admin Monitored)
             </button>
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
-    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg z-40 hidden">
-        <div class="max-w-md mx-auto flex justify-around py-2">
-            <button onclick="switchScreen('home')" id="nav-home" class="nav-btn flex flex-col items-center text-bitsNavy">
-                <i class="fa-solid fa-house text-sm"></i>
-                <span class="text-[9px] font-bold mt-1">Feed</span>
-            </button>
-            <button onclick="switchScreen('report')" id="nav-report" class="nav-btn flex flex-col items-center text-gray-400">
-                <i class="fa-solid fa-circle-plus text-sm"></i>
-                <span class="text-[9px] font-bold mt-1">Report</span>
-            </button>
-            <button onclick="switchScreen('chats')" id="nav-chats" class="nav-btn flex flex-col items-center text-gray-400">
-                <i class="fa-solid fa-comments text-sm"></i>
-                <span class="text-[9px] font-bold mt-1">Chats</span>
-            </button>
-            <button onclick="switchScreen('admin')" id="nav-admin" class="nav-btn flex flex-col items-center text-gray-400 hidden">
-                <i class="fa-solid fa-shield-halved text-sm"></i>
-                <span class="text-[9px] font-bold mt-1">Admin</span>
-            </button>
-        </div>
+    <!-- Bottom Mobile Navigation Bar -->
+    <nav id="bottom-nav" class="bg-white border-t border-gray-100 fixed bottom-0 left-0 right-0 max-w-md mx-auto py-2 px-6 flex justify-between items-center shadow-lg z-50 hidden">
+        <button onclick="switchScreen('home')" id="nav-home" class="nav-btn flex flex-col items-center text-bitsNavy"><i class="fa-solid fa-house text-sm"></i><span class="text-[10px] font-semibold mt-1">Home</span></button>
+        <button onclick="switchScreen('report')" id="nav-report" class="nav-btn flex flex-col items-center text-gray-400"><i class="fa-solid fa-circle-plus text-sm"></i><span class="text-[10px] font-semibold mt-1">Post</span></button>
+        <button onclick="switchScreen('admin')" id="nav-admin" class="nav-btn flex flex-col items-center text-gray-400 hidden"><i class="fa-solid fa-shield-halved text-sm"></i><span class="text-[10px] font-semibold mt-1">Admin</span></button>
+        <button onclick="switchScreen('profile')" id="nav-profile" class="nav-btn flex flex-col items-center text-gray-400"><i class="fa-solid fa-user text-sm"></i><span class="text-[10px] font-semibold mt-1">Profile</span></button>
     </nav>
 
-    <!-- Application Script Logic -->
     <script>
         // ================= SUPABASE CONFIGURATION =================
+        // Trailing slash removed to prevent double-slash REST URL errors
         const SUPABASE_URL = 'https://zqdgqwhzvveiindyolvh.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_CcfO-AXnPODr2YoZTLihTQ_RRaYvNz1';
         
@@ -314,7 +295,7 @@
 
         function renderFeed(items) {
             const feed = document.getElementById('items-feed');
-            if (!items || !items.length) { feed.innerHTML = '<div class="p-6 text-center text-xs text-gray-400">No items listed yet or database is empty.</div>'; return; }
+            if (!items.length) { feed.innerHTML = '<div class="p-6 text-center text-xs text-gray-400">No items listed yet or database is empty.</div>'; return; }
             feed.innerHTML = items.map((item, idx) => `
                 <div onclick="openModal(${idx})" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-3 items-start cursor-pointer hover:border-bitsNavy transition">
                     <div class="flex-grow">
@@ -496,6 +477,7 @@
 
         function handleReportSubmit(e) {
             e.preventDefault();
+            
             const imageInput = document.getElementById('report-image');
             const file = imageInput.files[0];
 
@@ -544,6 +526,8 @@
                 console.error("Exception during Supabase save:", e);
                 alert("An error occurred while saving to database.");
             }
+
+            allItemsCache.unshift(newItem);
 
             document.getElementById('report-title').value = '';
             document.getElementById('report-location').value = '';
