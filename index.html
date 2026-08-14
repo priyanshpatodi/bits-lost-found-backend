@@ -89,7 +89,7 @@
         <!-- 3. REPORT SCREEN -->
         <div id="screen-report" class="screen-view hidden p-4">
             <h2 class="text-sm font-extrabold text-bitsNavy mb-4">Post Lost or Found Item</h2>
-            <form onsubmit="handleReportSubmit(event)" class="space-y-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+            <form onsubmit="handleReportSubmit(event)" class="space-y-3 bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
                     <button type="button" id="btn-type-lost" onclick="setReportType('lost')" class="py-2 text-xs font-bold rounded-xl border border-red-500 bg-red-50 text-red-600">Lost Item</button>
                     <button type="button" id="btn-type-found" onclick="setReportType('found')" class="py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600">Found Item</button>
@@ -98,8 +98,23 @@
                     <label class="block text-[11px] font-bold text-gray-600 mb-1">Item Title</label>
                     <input type="text" id="report-title" required placeholder="e.g. Apple MacBook Air M1" class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
                 </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Category</label>
+                        <select id="report-category" class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-bitsNavy">
+                            <option value="electronics">Electronics</option>
+                            <option value="documents">Documents/ID</option>
+                            <option value="keys">Keys</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-600 mb-1">Campus</label>
+                        <input type="text" id="report-campus" value="Pilani" required class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
+                    </div>
+                </div>
                 <div>
-                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Last Seen / Found Location</label>
+                    <label class="block text-[11px] font-bold text-gray-600 mb-1">Location Details</label>
                     <input type="text" id="report-location" required placeholder="e.g. NAB Audi 2" class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
                 </div>
                 <div>
@@ -329,7 +344,7 @@
                             <h3 class="font-bold text-xs text-bitsNavy">${item.title || 'Item'}</h3>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${badgeClass}">${itemType.toUpperCase()}</span>
                         </div>
-                        <p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.location || 'Campus'}</p>
+                        <p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.location || 'Campus'} (${item.campus || 'Pilani'})</p>
                         <p class="text-[11px] text-gray-600 mt-1 bg-gray-50 p-2 rounded-lg line-clamp-2">${item.description || ''}</p>
                     </div>
                 </div>`;
@@ -347,7 +362,7 @@
                 <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                     <div>
                         <h4 class="font-bold text-xs text-bitsNavy">${item.title}</h4>
-                        <p class="text-[10px] text-gray-500">By: ${item.contact || 'Unknown'} | Loc: ${item.location}</p>
+                        <p class="text-[10px] text-gray-500">By: ${item.contact_email || 'Unknown'} | Loc: ${item.location}</p>
                     </div>
                     <button onclick="deleteItem(${idx})" class="bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-red-600">Delete</button>
                 </div>`;
@@ -401,9 +416,9 @@
         function openModal(index) {
             selectedItem = allItemsCache[index];
             document.getElementById('modal-title').innerText = selectedItem.title;
-            document.getElementById('modal-location').innerText = selectedItem.location;
+            document.getElementById('modal-location').innerText = (selectedItem.location || '') + ' (' + (selectedItem.campus || 'Pilani') + ')';
             document.getElementById('modal-desc').innerText = selectedItem.description;
-            document.getElementById('modal-contact').innerText = selectedItem.contact || 'Verified BITSian';
+            document.getElementById('modal-contact').innerText = selectedItem.contact_email || 'Verified BITSian';
             
             const badge = document.getElementById('modal-type-badge');
             const isLost = (selectedItem.type || 'lost') === 'lost';
@@ -412,8 +427,8 @@
 
             const imgContainer = document.getElementById('modal-image-container');
             const imgElem = document.getElementById('modal-image');
-            if (selectedItem.image) {
-                imgElem.src = selectedItem.image;
+            if (selectedItem.image_url) {
+                imgElem.src = selectedItem.image_url;
                 imgContainer.classList.remove('hidden');
             } else {
                 imgContainer.classList.add('hidden');
@@ -433,7 +448,7 @@
                 existingChat = {
                     id: 'chat_' + Date.now(),
                     itemTitle: selectedItem.title,
-                    participants: currentUser.email + ' & ' + (selectedItem.contact || 'Finder'),
+                    participants: currentUser.email + ' & ' + (selectedItem.contact_email || 'Finder'),
                     messages: [
                         { sender: 'System', text: 'Secure channel opened for "' + selectedItem.title + '". Monitored by campus administration.' }
                     ]
@@ -538,7 +553,7 @@
                 };
                 reader.readAsDataURL(file);
             } else {
-                saveNewItem('');
+                saveNewItem(null);
             }
         }
 
@@ -551,9 +566,12 @@
                 title: document.getElementById('report-title').value,
                 location: document.getElementById('report-location').value,
                 description: document.getElementById('report-desc').value,
-                image: imageUrl,
+                category: document.getElementById('report-category').value,
+                campus: document.getElementById('report-campus').value,
+                image_url: imageUrl,
                 type: currentStatusType,
-                contact: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
+                status: 'active',
+                contact_email: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
             };
 
             try {
