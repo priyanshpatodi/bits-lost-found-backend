@@ -72,7 +72,6 @@
 
         <!-- 2. HOME SCREEN (FEED) -->
         <div id="screen-home" class="screen-view hidden p-4 space-y-4">
-            <!-- Search & Filters -->
             <div class="flex gap-2">
                 <div class="relative flex-grow">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400 text-xs"></i>
@@ -84,11 +83,7 @@
                     <option value="found">Found</option>
                 </select>
             </div>
-
-            <!-- Items Feed -->
-            <div id="items-feed" class="space-y-3">
-                <!-- Dynamically Populated -->
-            </div>
+            <div id="items-feed" class="space-y-3"></div>
         </div>
 
         <!-- 3. REPORT SCREEN -->
@@ -124,9 +119,7 @@
         <!-- 4. CHAT LIST SCREEN -->
         <div id="screen-chats" class="screen-view hidden p-4 space-y-3">
             <h2 class="text-sm font-extrabold text-bitsNavy mb-2">Secure Conversations</h2>
-            <div id="chats-list-container" class="space-y-2">
-                <!-- Dynamically Populated -->
-            </div>
+            <div id="chats-list-container" class="space-y-2"></div>
         </div>
 
         <!-- 5. ACTIVE CHAT ROOM SCREEN -->
@@ -136,9 +129,7 @@
                 <h3 id="chat-item-title" class="font-bold text-xs text-bitsNavy">Chat Room</h3>
                 <div></div>
             </div>
-            <div id="chat-messages" class="flex-grow bg-white p-3 rounded-2xl shadow-sm border border-gray-100 overflow-y-auto space-y-2 text-xs mb-2">
-                <!-- Messages -->
-            </div>
+            <div id="chat-messages" class="flex-grow bg-white p-3 rounded-2xl shadow-sm border border-gray-100 overflow-y-auto space-y-2 text-xs mb-2"></div>
             <div class="flex gap-2">
                 <input type="text" id="chat-input" placeholder="Type a secure message..." class="flex-grow px-3 py-2 text-xs bg-white rounded-xl border border-gray-200 focus:outline-none focus:border-bitsNavy">
                 <button onclick="sendChatMessage()" class="bg-bitsNavy text-white px-4 py-2 rounded-xl text-xs font-bold shadow">Send</button>
@@ -164,9 +155,7 @@
         <!-- 7. PROFILE SCREEN -->
         <div id="screen-profile" class="screen-view hidden p-4 space-y-4">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
-                <div id="profile-initials" class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-full mx-auto flex items-center justify-center text-lg font-bold shadow mb-3">
-                    --
-                </div>
+                <div id="profile-initials" class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-full mx-auto flex items-center justify-center text-lg font-bold shadow mb-3">--</div>
                 <h3 id="profile-email" class="font-bold text-xs text-bitsNavy">user@bits-pilani.ac.in</h3>
                 <p id="profile-role" class="text-[10px] text-gray-500 mt-1">Verified BITSian Student</p>
                 <button onclick="handleLogout()" class="mt-4 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold border border-red-200 shadow-sm hover:bg-red-100 transition">
@@ -223,7 +212,6 @@
 
     <!-- Application Script Logic -->
     <script>
-        // ================= SUPABASE CONFIGURATION =================
         const SUPABASE_URL = 'https://zqdgqwhzvveiindyolvh.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_CcfO-AXnPODr2YoZTLihTQ_RRaYvNz1';
         
@@ -233,7 +221,7 @@
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
         } catch(e) {
-            console.error("Supabase initialization error:", e);
+            console.error("Supabase init error:", e);
         }
 
         let currentStatusType = 'lost';
@@ -255,12 +243,13 @@
         let currentActiveChat = null;
 
         function switchScreen(screenId) {
-            // Guard rule: if user is not logged in, force 'auth' screen unless trying to log in
             if (!currentUser && screenId !== 'auth') {
                 screenId = 'auth';
             }
 
-            document.querySelectorAll('.screen-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.screen-view').forEach(function(el) {
+                el.classList.add('hidden');
+            });
             const targetScreen = document.getElementById('screen-' + screenId);
             if (targetScreen) {
                 targetScreen.classList.remove('hidden');
@@ -277,14 +266,20 @@
                 nav.classList.remove('hidden');
             }
 
-            if (currentUser?.isAdmin && screenId === 'admin') {
+            if (currentUser && currentUser.isAdmin && screenId === 'admin') {
                 renderAdminList();
                 renderAdminChats();
             }
 
-            document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('text-bitsNavy'); b.classList.add('text-gray-400'); });
+            document.querySelectorAll('.nav-btn').forEach(function(b) {
+                b.classList.remove('text-bitsNavy');
+                b.classList.add('text-gray-400');
+            });
             const activeNav = document.getElementById('nav-' + screenId);
-            if(activeNav) { activeNav.classList.remove('text-gray-400'); activeNav.classList.add('text-bitsNavy'); }
+            if(activeNav) { 
+                activeNav.classList.remove('text-gray-400'); 
+                activeNav.classList.add('text-bitsNavy'); 
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -297,22 +292,22 @@
         async function fetchItems() {
             try {
                 if (supabaseClient) {
-                    const { data, error } = await supabaseClient
+                    const response = await supabaseClient
                         .from('items')
                         .select('*')
                         .order('created_at', { ascending: false });
                     
-                    if (error) {
-                        console.error("Supabase fetch error:", error.message);
-                    } else if (data) {
-                        allItemsCache = data;
+                    if (response.error) {
+                        console.error("Supabase fetch error:", response.error.message);
+                    } else if (response.data) {
+                        allItemsCache = response.data;
                     }
                 }
             } catch (e) {
                 console.error("Error connecting to Supabase:", e);
             }
             renderFeed(allItemsCache);
-            if (currentUser?.isAdmin) {
+            if (currentUser && currentUser.isAdmin) {
                 renderAdminList();
                 renderAdminChats();
             }
@@ -320,35 +315,53 @@
 
         function renderFeed(items) {
             const feed = document.getElementById('items-feed');
-            if (!items || !items.length) { feed.innerHTML = '<div class="p-6 text-center text-xs text-gray-400">No items listed yet or database is empty.</div>'; return; }
-            feed.innerHTML = items.map((item, idx) => `
+            if (!items || !items.length) { 
+                feed.innerHTML = '<div class="p-6 text-center text-xs text-gray-400">No items listed yet or database is empty.</div>'; 
+                return; 
+            }
+            feed.innerHTML = items.map(function(item, idx) {
+                const itemType = item.type || 'lost';
+                const badgeClass = itemType === 'lost' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600';
+                return `
                 <div onclick="openModal(${idx})" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-3 items-start cursor-pointer hover:border-bitsNavy transition">
                     <div class="flex-grow">
-                        <div class="flex justify-between"><h3 class="font-bold text-xs text-bitsNavy">${item.title || 'Item'}</h3><span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${(item.type||'lost')==='lost'?'bg-red-100 text-red-600':'bg-emerald-100 text-emerald-600'}">${(item.type||'lost').toUpperCase()}</span></div>
+                        <div class="flex justify-between">
+                            <h3 class="font-bold text-xs text-bitsNavy">${item.title || 'Item'}</h3>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${badgeClass}">${itemType.toUpperCase()}</span>
+                        </div>
                         <p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.location || 'Campus'}</p>
                         <p class="text-[11px] text-gray-600 mt-1 bg-gray-50 p-2 rounded-lg line-clamp-2">${item.description || ''}</p>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         }
 
         function renderAdminList() {
             const container = document.getElementById('admin-items-list');
-            if (!allItemsCache.length) { container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No active posts.</p>'; return; }
-            container.innerHTML = allItemsCache.map((item, idx) => `
+            if (!allItemsCache.length) { 
+                container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No active posts.</p>'; 
+                return; 
+            }
+            container.innerHTML = allItemsCache.map(function(item, idx) {
+                return `
                 <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                     <div>
                         <h4 class="font-bold text-xs text-bitsNavy">${item.title}</h4>
                         <p class="text-[10px] text-gray-500">By: ${item.contact || 'Unknown'} | Loc: ${item.location}</p>
                     </div>
                     <button onclick="deleteItem(${idx})" class="bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-red-600">Delete</button>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         function renderAdminChats() {
             const container = document.getElementById('admin-chats-list');
-            if (!activeChats.length) { container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No ongoing chats.</p>'; return; }
-            container.innerHTML = activeChats.map((chat, idx) => `
+            if (!activeChats.length) { 
+                container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No ongoing chats.</p>'; 
+                return; 
+            }
+            container.innerHTML = activeChats.map(function(chat, idx) {
+                return `
                 <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                     <div>
                         <h4 class="font-bold text-xs text-bitsNavy">${chat.itemTitle}</h4>
@@ -356,25 +369,25 @@
                         <p class="text-[9px] text-bitsGold font-medium mt-0.5">${chat.messages.length} messages logged</p>
                     </div>
                     <button onclick="auditChat(${idx})" class="bg-bitsNavy text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-opacity-90">Audit Chat</button>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         function auditChat(index) {
             currentActiveChat = activeChats[index];
-            document.getElementById('chat-item-title').innerText = `Auditing: ${currentActiveChat.itemTitle}`;
+            document.getElementById('chat-item-title').innerText = 'Auditing: ' + currentActiveChat.itemTitle;
             renderChatMessages();
             switchScreen('chat');
         }
 
         async function deleteItem(index) {
             const item = allItemsCache[index];
-            if (!confirm(`Are you sure you want to delete "${item.title}"?`)) return;
+            if (!confirm('Are you sure you want to delete "' + item.title + '"?')) return;
 
             try {
                 if (supabaseClient && item.id) {
-                    const { error } = await supabaseClient.from('items').delete().eq('id', item.id);
-                    if (error) alert("Error deleting from database: " + error.message);
+                    const response = await supabaseClient.from('items').delete().eq('id', item.id);
+                    if (response.error) alert("Error deleting from database: " + response.error.message);
                 }
             } catch (e) {
                 console.error("Error deleting from Supabase:", e);
@@ -415,20 +428,20 @@
 
         function openChatFromModal() {
             closeModal();
-            let existingChat = activeChats.find(c => c.itemTitle === selectedItem.title);
+            let existingChat = activeChats.find(function(c) { return c.itemTitle === selectedItem.title; });
             if (!existingChat) {
                 existingChat = {
                     id: 'chat_' + Date.now(),
                     itemTitle: selectedItem.title,
-                    participants: `${currentUser.email} & ${selectedItem.contact || 'Finder'}`,
+                    participants: currentUser.email + ' & ' + (selectedItem.contact || 'Finder'),
                     messages: [
-                        { sender: 'System', text: `Secure channel opened for "${selectedItem.title}". Monitored by campus administration.` }
+                        { sender: 'System', text: 'Secure channel opened for "' + selectedItem.title + '". Monitored by campus administration.' }
                     ]
                 };
                 activeChats.push(existingChat);
             }
             currentActiveChat = existingChat;
-            document.getElementById('chat-item-title').innerText = `Chat: ${selectedItem.title}`;
+            document.getElementById('chat-item-title').innerText = 'Chat: ' + selectedItem.title;
             renderChatMessages();
             switchScreen('chat');
         }
@@ -436,12 +449,21 @@
         function renderChatMessages() {
             const container = document.getElementById('chat-messages');
             if (!currentActiveChat) return;
-            container.innerHTML = currentActiveChat.messages.map(m => `
-                <div class="p-2 rounded-xl ${m.sender === 'System' ? 'bg-yellow-50 text-yellow-800 text-[10px] text-center font-medium border border-yellow-200' : m.sender === currentUser?.email ? 'bg-bitsNavy text-white ml-auto max-w-[80%]' : currentUser?.isAdmin ? 'bg-blue-50 text-blue-900 border border-blue-200 mr-auto max-w-[80%]' : 'bg-gray-100 text-gray-800 mr-auto max-w-[80%]}">
-                    ${m.sender !== 'System' ? `<div class="text-[9px] opacity-70 mb-0.5">${m.sender}</div>` : ''}
+            container.innerHTML = currentActiveChat.messages.map(function(m) {
+                let bgClass = 'bg-gray-100 text-gray-800 mr-auto max-w-[80%]';
+                if (m.sender === 'System') {
+                    bgClass = 'bg-yellow-50 text-yellow-800 text-[10px] text-center font-medium border border-yellow-200 w-full';
+                } else if (m.sender === currentUser.email) {
+                    bgClass = 'bg-bitsNavy text-white ml-auto max-w-[80%]';
+                } else if (currentUser.isAdmin) {
+                    bgClass = 'bg-blue-50 text-blue-900 border border-blue-200 mr-auto max-w-[80%]';
+                }
+                return `
+                <div class="p-2 rounded-xl ${bgClass}">
+                    ${m.sender !== 'System' ? '<div class="text-[9px] opacity-70 mb-0.5">' + m.sender + '</div>' : ''}
                     <div>${m.text}</div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
             container.scrollTop = container.scrollHeight;
         }
 
@@ -457,7 +479,11 @@
         function filterItems() {
             const q = document.getElementById('search-input').value.toLowerCase();
             const t = document.getElementById('filter-type').value;
-            renderFeed(allItemsCache.filter(i => (i.title||'').toLowerCase().includes(q) && (t === 'all' || (i.type||'lost') === t)));
+            renderFeed(allItemsCache.filter(function(i) {
+                const matchesTitle = (i.title || '').toLowerCase().includes(q);
+                const matchesType = (t === 'all' || (i.type || 'lost') === t);
+                return matchesTitle && matchesType;
+            }));
         }
 
         function handleAuth(e) {
@@ -475,7 +501,6 @@
                 return;
             }
 
-            // Set currentUser first
             currentUser = {
                 email: email,
                 isAdmin: isAdmin,
@@ -535,16 +560,16 @@
                 if (!supabaseClient) {
                     alert("Supabase client is not initialized.");
                 } else {
-                    const { data, error } = await supabaseClient
+                    const response = await supabaseClient
                         .from('items')
                         .insert([newItem])
                         .select();
                     
-                    if (error) {
-                        console.error("Supabase Insert Error:", error);
-                        alert("Failed to publish listing to Supabase: " + error.message);
-                    } else if (data && data.length > 0) {
-                        newItem.id = data[0].id;
+                    if (response.error) {
+                        console.error("Supabase Insert Error:", response.error);
+                        alert("Failed to publish listing to Supabase: " + response.error.message);
+                    } else if (response.data && response.data.length > 0) {
+                        newItem.id = response.data[0].id;
                     }
                 }
             } catch (e) {
@@ -559,7 +584,7 @@
             submitBtn.innerText = 'Publish Listing';
             submitBtn.disabled = false;
 
-            switchScreen(currentUser?.isAdmin ? 'admin' : 'home');
+            switchScreen(currentUser && currentUser.isAdmin ? 'admin' : 'home');
             fetchItems();
         }
 
@@ -572,7 +597,6 @@
             switchScreen('auth');
         }
 
-        // Initialize state view to auth on load
         switchScreen('auth');
     </script>
 </body>
