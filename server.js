@@ -1,31 +1,24 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import itemsRouter from './routes/items.js';
 
 dotenv.config();
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// Health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'BITS Lost & Found API is healthy' });
 });
 
-// Main items router mounted at /api/items
 app.use('/api/items', itemsRouter);
-
-// Auth routes
-app.post('/api/auth/signup', (req, res) => {
-  const { email } = req.body;
-  if (!email || !email.endsWith('bits-pilani.ac.in')) {
-    return res.status(400).json({ message: 'Must use a valid @bits-pilani.ac.in email address.' });
-  }
-  return res.status(200).json({ success: true, message: 'User registered successfully!' });
-});
 
 app.post('/api/auth/login', (req, res) => {
   const { email } = req.body;
@@ -39,207 +32,11 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// Direct UI Response (No external file dependencies)
 app.get('/*splat', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' });
   }
-  
-  res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BITS Lost & Found • Pilani Campus</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: { bitsNavy: '#0A2540', bitsGold: '#D4AF37', bitsBg: '#F8F9FA' }
-                }
-            }
-        }
-    </script>
-</head>
-<body class="bg-bitsBg text-bitsNavy min-h-screen flex flex-col font-sans select-none">
-    <header class="bg-bitsNavy text-white px-4 py-3 shadow-md sticky top-0 z-50 flex justify-between items-center">
-        <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 rounded-full bg-bitsGold flex items-center justify-center text-bitsNavy font-bold text-sm shadow">BP</div>
-            <div>
-                <h1 class="font-bold text-base leading-tight">BITS Lost & Found</h1>
-                <p class="text-[10px] text-gray-300 tracking-wider uppercase">Pilani Campus</p>
-            </div>
-        </div>
-        <div id="auth-header-btn">
-            <button onclick="switchScreen('auth')" class="text-xs bg-bitsGold text-bitsNavy px-3 py-1.5 rounded-full font-semibold shadow hover:bg-yellow-500 transition">Login / Signup</button>
-        </div>
-    </header>
-
-    <main class="flex-grow max-w-md mx-auto w-full p-4 pb-20">
-        <!-- AUTH SCREEN -->
-        <section id="screen-auth" class="screen-view hidden flex flex-col justify-center min-h-[75vh]">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <div class="text-center mb-6">
-                    <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-2xl mx-auto flex items-center justify-center text-2xl font-black mb-3 shadow-inner">BITS</div>
-                    <h2 class="text-xl font-bold text-bitsNavy">Welcome BITSian</h2>
-                    <p class="text-xs text-gray-500 mt-1">Sign in with your @bits-pilani.ac.in credentials</p>
-                </div>
-                <form onsubmit="handleAuth(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">BITS Email Address</label>
-                        <input type="email" id="auth-email" required placeholder="f20230000@pilani.bits-pilani.ac.in" class="w-full px-3 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-bitsNavy">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Password</label>
-                        <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-bitsNavy">
-                    </div>
-                    <div id="auth-error" class="text-red-500 text-[11px] text-center hidden"></div>
-                    <button type="submit" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-opacity-90 transition">Verify & Enter Portal</button>
-                </form>
-            </div>
-        </section>
-
-        <!-- HOME SCREEN -->
-        <section id="screen-home" class="screen-view space-y-4">
-            <div class="flex gap-2">
-                <input type="text" id="search-input" oninput="filterItems()" placeholder="Search items..." class="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none">
-                <select id="filter-type" onchange="filterItems()" class="bg-white border border-gray-200 text-xs px-3 py-2 rounded-xl shadow-sm font-medium">
-                    <option value="all">All</option>
-                    <option value="lost">Lost</option>
-                    <option value="found">Found</option>
-                </select>
-            </div>
-            <div id="items-feed" class="space-y-3">
-                <div class="bg-white p-6 rounded-2xl text-center text-xs text-gray-400">Loading campus items...</div>
-            </div>
-        </section>
-
-        <!-- REPORT SCREEN -->
-        <section id="screen-report" class="screen-view hidden space-y-4">
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                <h2 class="font-bold text-sm text-bitsNavy mb-3">Post Lost or Found Item</h2>
-                <form onsubmit="handleReportSubmit(event)" class="space-y-3">
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="setReportType('lost')" id="btn-type-lost" class="py-2 text-xs font-bold rounded-xl border border-red-500 bg-red-50 text-red-600">Lost</button>
-                        <button type="button" onclick="setReportType('found')" id="btn-type-found" class="py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600">Found</button>
-                    </div>
-                    <input type="text" id="report-title" required placeholder="Item Title (e.g., Calculator)" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl">
-                    <input type="text" id="report-location" required placeholder="Location (e.g., NAB, ANC)" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl">
-                    <textarea id="report-desc" rows="3" required placeholder="Description..." class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl"></textarea>
-                    <button type="submit" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md">Publish Listing</button>
-                </form>
-            </div>
-        </section>
-
-        <!-- PROFILE SCREEN -->
-        <section id="screen-profile" class="screen-view hidden space-y-4">
-            <div class="bg-white p-5 rounded-2xl shadow-sm border text-center">
-                <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-full mx-auto flex items-center justify-center text-xl font-bold mb-3"><span id="profile-initials">BP</span></div>
-                <h2 id="profile-email" class="font-bold text-xs text-bitsNavy">Not Logged In</h2>
-                <button onclick="handleLogout()" class="w-full mt-6 bg-red-50 text-red-600 border border-red-200 py-2 rounded-xl text-xs font-bold">Logout</button>
-            </div>
-        </section>
-    </main>
-
-    <nav class="bg-white border-t border-gray-100 fixed bottom-0 left-0 right-0 max-w-md mx-auto py-2 px-6 flex justify-between items-center shadow-lg z-50">
-        <button onclick="switchScreen('home')" id="nav-home" class="nav-btn flex flex-col items-center text-bitsNavy"><i class="fa-solid fa-house text-sm"></i><span class="text-[10px] font-semibold mt-1">Home</span></button>
-        <button onclick="switchScreen('report')" id="nav-report" class="nav-btn flex flex-col items-center text-gray-400"><i class="fa-solid fa-circle-plus text-sm"></i><span class="text-[10px] font-semibold mt-1">Post</span></button>
-        <button onclick="switchScreen('profile')" id="nav-profile" class="nav-btn flex flex-col items-center text-gray-400"><i class="fa-solid fa-user text-sm"></i><span class="text-[10px] font-semibold mt-1">Profile</span></button>
-    </nav>
-
-    <script>
-        let currentStatusType = 'lost';
-        let currentUser = null;
-        let allItemsCache = [];
-
-        function switchScreen(screenId) {
-            document.querySelectorAll('.screen-view').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`screen-\${screenId}`).classList.remove('hidden');
-            document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('text-bitsNavy'); b.classList.add('text-gray-400'); });
-            const nav = document.getElementById(`nav-\${screenId}`);
-            if(nav) { nav.classList.remove('text-gray-400'); nav.classList.add('text-bitsNavy'); }
-        }
-
-        function setReportType(type) {
-            currentStatusType = type;
-            document.getElementById('btn-type-lost').className = type === 'lost' ? "py-2 text-xs font-bold rounded-xl border border-red-500 bg-red-50 text-red-600" : "py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600";
-            document.getElementById('btn-type-found').className = type === 'found' ? "py-2 text-xs font-bold rounded-xl border border-emerald-500 bg-emerald-50 text-emerald-600" : "py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600";
-        }
-
-        async function fetchItems() {
-            try {
-                const res = await fetch('/api/items');
-                const data = await res.json();
-                allItemsCache = Array.isArray(data) ? data : (data.items || []);
-                renderFeed(allItemsCache);
-            } catch (e) {
-                document.getElementById('items-feed').innerHTML = '<div class="p-4 text-center text-xs text-gray-400">Failed to load API feed.</div>';
-            }
-        }
-
-        function renderFeed(items) {
-            const feed = document.getElementById('items-feed');
-            if (!items.length) { feed.innerHTML = '<div class="p-6 text-center text-xs text-gray-400">No items listed yet.</div>'; return; }
-            feed.innerHTML = items.map(item => `
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-3 items-start">
-                    <div class="flex-grow">
-                        <div class="flex justify-between"><h3 class="font-bold text-xs text-bitsNavy">\${item.title || 'Item'}</h3><span class="text-[10px] px-2 py-0.5 rounded-full font-bold \${(item.type||'lost')==='lost'?'bg-red-100 text-red-600':'bg-emerald-100 text-emerald-600'}">\${(item.type||'lost').toUpperCase()}</span></div>
-                        <p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>\${item.location || 'Campus'}</p>
-                        <p class="text-[11px] text-gray-600 mt-1 bg-gray-50 p-2 rounded-lg">\${item.description || ''}</p>
-                    </div>
-                </div>`).join('');
-        }
-
-        function filterItems() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            const t = document.getElementById('filter-type').value;
-            renderFeed(allItemsCache.filter(i => (i.title||'').toLowerCase().includes(q) && (t === 'all' || (i.type||'lost') === t)));
-        }
-
-        async function handleAuth(e) {
-            e.preventDefault();
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email, password})});
-            const data = await res.json();
-            if(res.ok) {
-                currentUser = data.user;
-                document.getElementById('profile-email').innerText = currentUser.email;
-                document.getElementById('profile-initials').innerText = currentUser.email.substring(0,2).toUpperCase();
-                switchScreen('home');
-            } else {
-                const err = document.getElementById('auth-error');
-                err.innerText = data.message; err.classList.remove('hidden');
-            }
-        }
-
-        async function handleReportSubmit(e) {
-            e.preventDefault();
-            await fetch('/api/items', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-                title: document.getElementById('report-title').value,
-                location: document.getElementById('report-location').value,
-                description: document.getElementById('report-desc').value,
-                type: currentStatusType,
-                contact: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
-            })});
-            document.getElementById('report-desc').value = '';
-            document.getElementById('report-title').value = '';
-            document.getElementById('report-location').value = '';
-            switchScreen('home');
-            fetchItems();
-        }
-
-        function handleLogout() {
-            currentUser = null;
-            switchScreen('auth');
-        }
-
-        fetchItems();
-    </script>
-</body>
-</html>`);
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
