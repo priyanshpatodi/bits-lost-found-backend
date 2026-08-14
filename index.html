@@ -94,10 +94,6 @@
                         <label class="block text-[11px] font-semibold text-gray-600 mb-1">Detailed Description</label>
                         <textarea id="report-desc" rows="3" required placeholder="Describe distinguishing marks, color, brand..." class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-gray-600 mb-1">Photo Attachment (.jpg / .jpeg only)</label>
-                        <input type="file" id="report-image" accept=".jpg, .jpeg" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-bitsNavy file:text-white hover:file:bg-opacity-90">
-                    </div>
                     <button type="submit" id="submit-btn" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md">Publish Listing</button>
                 </form>
             </div>
@@ -174,9 +170,6 @@
                 <span id="modal-type-badge" class="text-[10px] px-2.5 py-0.5 rounded-full font-bold"></span>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-black"><i class="fa-solid fa-xmark text-base"></i></button>
             </div>
-            <div id="modal-image-container" class="hidden w-full h-40 bg-gray-100 rounded-xl overflow-hidden">
-                <img id="modal-image" src="" alt="Item photo" class="w-full h-full object-cover">
-            </div>
             <div>
                 <h3 id="modal-title" class="font-bold text-sm text-bitsNavy"></h3>
                 <p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1 text-gray-400"></i><span id="modal-location"></span></p>
@@ -203,7 +196,6 @@
     </nav>
 
     <script>
-        // ================= SUPABASE CONFIGURATION =================
         const SUPABASE_URL = 'https://zqdgqwhzvveiindyolvh.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_CcfO-AXnPODr2YoZTLihTQ_RRaYvNz1';
         
@@ -371,18 +363,6 @@
             badge.innerText = isLost ? 'LOST ITEM' : 'FOUND ITEM';
             badge.className = isLost ? 'text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-red-100 text-red-600' : 'text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-600';
 
-            const imgContainer = document.getElementById('modal-image-container');
-            const imgElem = document.getElementById('modal-image');
-            if (selectedItem.image_url) {
-                imgElem.src = selectedItem.image_url;
-                imgContainer.classList.remove('hidden');
-            } else if (selectedItem.image) {
-                imgElem.src = selectedItem.image;
-                imgContainer.classList.remove('hidden');
-            } else {
-                imgContainer.classList.add('hidden');
-            }
-
             document.getElementById('item-modal').classList.remove('hidden');
         }
 
@@ -477,24 +457,9 @@
             }
         }
 
-        function handleReportSubmit(e) {
+        async function handleReportSubmit(e) {
             e.preventDefault();
             
-            const imageInput = document.getElementById('report-image');
-            const file = imageInput.files[0];
-
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
-                    saveNewItem(uploadEvent.target.result);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                saveNewItem(null);
-            }
-        }
-
-        async function saveNewItem(imageUrl) {
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.innerText = 'Publishing to Supabase...';
             submitBtn.disabled = true;
@@ -503,12 +468,12 @@
                 title: document.getElementById('report-title').value,
                 location: document.getElementById('report-location').value,
                 description: document.getElementById('report-desc').value,
-                image_url: imageUrl,
                 type: currentStatusType,
                 campus: 'Pilani',
                 category: 'other',
                 status: 'active',
-                contact_email: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
+                contact_email: currentUser ? currentUser.email : 'student@bits-pilani.ac.in',
+                image_url: null
             };
 
             try {
@@ -524,7 +489,6 @@
                         console.error("Supabase Insert Error:", error);
                         alert("Failed to publish listing to Supabase: " + error.message);
                     } else if (data && data.length > 0) {
-                        newItem.id = data[0].id;
                         allItemsCache.unshift(data[0]);
                     }
                 }
@@ -536,7 +500,6 @@
             document.getElementById('report-title').value = '';
             document.getElementById('report-location').value = '';
             document.getElementById('report-desc').value = '';
-            document.getElementById('report-image').value = '';
             submitBtn.innerText = 'Publish Listing';
             submitBtn.disabled = false;
 
