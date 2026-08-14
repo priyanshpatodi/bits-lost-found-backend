@@ -3,31 +3,26 @@ import { supabase } from '../config/supabase.js';
 
 const router = express.Router();
 
-// GET /api/items - Fetch items directly from Supabase
+// GET /api/items
 router.get('/', async (req, res, next) => {
   try {
-    const { type, location, campus } = req.query;
-
-    let query = supabase.from('items').select('*').order('created_at', { ascending: false });
-
-    if (type) query = query.eq('type', type);
-    if (location) query = query.ilike('location', `%${location}%`);
-    if (campus) query = query.eq('campus', campus);
-
-    const { data: items, error } = await query;
+    const { data: items, error } = await supabase
+      .from('items')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("Supabase Error:", error);
-      throw error;
+      console.error('Supabase error:', error);
+      return res.status(500).json({ success: false, error: error.message });
     }
 
     res.json({
       success: true,
-      count: items.length,
-      items
+      count: items ? items.length : 0,
+      items: items || [],
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
