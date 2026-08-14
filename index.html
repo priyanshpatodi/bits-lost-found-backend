@@ -417,7 +417,7 @@
             const isAdmin = email.toLowerCase().startsWith('admin');
 
             if (isAdmin && password !== 'admin123') {
-                errorEl.innerText = 'Incorrect administrator password. (Required: admin123)';
+                errorEl.innerText = 'Incorrect password';
                 errorEl.classList.remove('hidden');
                 return;
             }
