@@ -204,14 +204,12 @@
 
     <script>
         // ================= SUPABASE CONFIGURATION =================
-        // Replace strings below with your active Supabase project credentials
-        const SUPABASE_URL = ' https://zqdgqwhzvveiindyolvh.supabase.co '  ;
-
+        const SUPABASE_URL = 'https://zqdgqwhzvveiindyolvh.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_CcfO-AXnPODr2YoZTLihTQ_RRaYvNz1';
         
         let supabaseClient = null;
         try {
-            if (window.supabase && SUPABASE_URL !== 'YOUR_SUPABASE_URL_HERE') {
+            if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             }
         } catch(e) {
@@ -314,7 +312,7 @@
                 <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                     <div>
                         <h4 class="font-bold text-xs text-bitsNavy">${item.title}</h4>
-                        <p class="text-[10px] text-gray-500">By: ${item.contact || 'Unknown'} | Loc: ${item.location}</p>
+                        <p class="text-[10px] text-gray-500">By: ${item.contact_email || 'Unknown'} | Loc: ${item.location}</p>
                     </div>
                     <button onclick="deleteItem(${idx})" class="bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-red-600">Delete</button>
                 </div>
@@ -366,7 +364,7 @@
             document.getElementById('modal-title').innerText = selectedItem.title;
             document.getElementById('modal-location').innerText = selectedItem.location;
             document.getElementById('modal-desc').innerText = selectedItem.description;
-            document.getElementById('modal-contact').innerText = selectedItem.contact || 'Verified BITSian';
+            document.getElementById('modal-contact').innerText = selectedItem.contact_email || 'Verified BITSian';
             
             const badge = document.getElementById('modal-type-badge');
             const isLost = (selectedItem.type || 'lost') === 'lost';
@@ -375,7 +373,10 @@
 
             const imgContainer = document.getElementById('modal-image-container');
             const imgElem = document.getElementById('modal-image');
-            if (selectedItem.image) {
+            if (selectedItem.image_url) {
+                imgElem.src = selectedItem.image_url;
+                imgContainer.classList.remove('hidden');
+            } else if (selectedItem.image) {
                 imgElem.src = selectedItem.image;
                 imgContainer.classList.remove('hidden');
             } else {
@@ -396,7 +397,7 @@
                 existingChat = {
                     id: 'chat_' + Date.now(),
                     itemTitle: selectedItem.title,
-                    participants: `${currentUser.email} & ${selectedItem.contact || 'Finder'}`,
+                    participants: `${currentUser.email} & ${selectedItem.contact_email || 'Finder'}`,
                     messages: [
                         { sender: 'System', text: `Secure channel opened for "${selectedItem.title}". Monitored by campus administration.` }
                     ]
@@ -413,7 +414,7 @@
             const container = document.getElementById('chat-messages');
             if (!currentActiveChat) return;
             container.innerHTML = currentActiveChat.messages.map(m => `
-                <div class="p-2 rounded-xl ${m.sender === 'System' ? 'bg-yellow-50 text-yellow-800 text-[10px] text-center font-medium border border-yellow-200' : m.sender === currentUser?.email ? 'bg-bitsNavy text-white ml-auto max-w-[80%]' : currentUser?.isAdmin ? 'bg-blue-50 text-blue-900 border border-blue-200 mr-auto max-w-[80%]' : 'bg-gray-100 text-gray-800 mr-auto max-w-[80%]'}">
+                <div class="p-2 rounded-xl ${m.sender === 'System' ? 'bg-yellow-50 text-yellow-800 text-[10px] text-center font-medium border border-yellow-200' : m.sender === currentUser?.email ? 'bg-bitsNavy text-white ml-auto max-w-[80%]' : currentUser?.isAdmin ? 'bg-blue-50 text-blue-900 border border-blue-200 mr-auto max-w-[80%]' : 'bg-gray-100 text-gray-800 mr-auto max-w-[80%]}">
                     ${m.sender !== 'System' ? `<div class="text-[9px] opacity-70 mb-0.5">${m.sender}</div>` : ''}
                     <div>${m.text}</div>
                 </div>
@@ -489,7 +490,7 @@
                 };
                 reader.readAsDataURL(file);
             } else {
-                saveNewItem('');
+                saveNewItem(null);
             }
         }
 
@@ -502,14 +503,17 @@
                 title: document.getElementById('report-title').value,
                 location: document.getElementById('report-location').value,
                 description: document.getElementById('report-desc').value,
-                image: imageUrl,
+                image_url: imageUrl,
                 type: currentStatusType,
-                contact: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
+                campus: 'Pilani',
+                category: 'other',
+                status: 'active',
+                contact_email: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
             };
 
             try {
                 if (!supabaseClient) {
-                    alert("Supabase client is not initialized. Please check your URL and Key configuration.");
+                    alert("Supabase client is not initialized.");
                 } else {
                     const { data, error } = await supabaseClient
                         .from('items')
@@ -521,14 +525,13 @@
                         alert("Failed to publish listing to Supabase: " + error.message);
                     } else if (data && data.length > 0) {
                         newItem.id = data[0].id;
+                        allItemsCache.unshift(data[0]);
                     }
                 }
             } catch (e) {
                 console.error("Exception during Supabase save:", e);
                 alert("An error occurred while saving to database.");
             }
-
-            allItemsCache.unshift(newItem);
 
             document.getElementById('report-title').value = '';
             document.getElementById('report-location').value = '';
