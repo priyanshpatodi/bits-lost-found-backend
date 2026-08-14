@@ -52,9 +52,6 @@
                     <div id="auth-error" class="text-red-500 text-[11px] text-center hidden"></div>
                     <button type="submit" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-opacity-90 transition">Login to Portal</button>
                 </form>
-                <div class="mt-4 text-center">
-                    <p class="text-[10px] text-gray-400">Admin accounts use: <code class="bg-gray-100 px-1 py-0.5 rounded text-gray-600 font-mono">admin@bits-pilani.ac.in</code></p>
-                </div>
             </div>
         </section>
 
@@ -209,7 +206,6 @@
         let allItemsCache = [];
         let selectedItem = null;
         
-        // Global central database of active chats for Admin auditing
         let activeChats = [
             {
                 id: 'chat_1',
@@ -366,7 +362,6 @@
 
         function openChatFromModal() {
             closeModal();
-            // Check if chat already exists for this item, else create one
             let existingChat = activeChats.find(c => c.itemTitle === selectedItem.title);
             if (!existingChat) {
                 existingChat = {
@@ -414,10 +409,18 @@
 
         async function handleAuth(e) {
             e.preventDefault();
-            const email = document.getElementById('auth-email').value;
+            const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
-            
-            const isAdmin = email.startsWith('admin');
+            const errorEl = document.getElementById('auth-error');
+            errorEl.classList.add('hidden');
+
+            const isAdmin = email.toLowerCase().startsWith('admin');
+
+            if (isAdmin && password !== 'admin123') {
+                errorEl.innerText = 'Incorrect administrator password. (Required: admin123)';
+                errorEl.classList.remove('hidden');
+                return;
+            }
 
             currentUser = {
                 email: email,
