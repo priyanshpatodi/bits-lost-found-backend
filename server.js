@@ -65,8 +65,8 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// 2. Catch-all fallback route to serve index.html for web/app pages
-app.get('*', (req, res) => {
+// 2. Catch-all fallback route using Express 5 compatible wildcard syntax
+app.get('/*splat', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' });
   }
