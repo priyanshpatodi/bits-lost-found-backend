@@ -34,13 +34,12 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
-// Explicit absolute path fallback for frontend UI
-app.get('*', (req, res) => {
+// Fixed modern Express wildcard route
+app.get(/(.*)/, (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' });
   }
   
-  // Looks explicitly for index.html in the root project folder using absolute path
   const filePath = path.resolve(__dirname, 'index.html');
   res.sendFile(filePath, (err) => {
     if (err) {
