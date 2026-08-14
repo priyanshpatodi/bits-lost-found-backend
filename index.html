@@ -338,7 +338,7 @@
                 <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                     <div>
                         <h4 class="font-bold text-xs text-bitsNavy">${item.title}</h4>
-                        <p class="text-[10px] text-gray-500">By: ${item.contact || 'Unknown'} | Loc: ${item.location}</p>
+                        <p class="text-[10px] text-gray-500">By: ${item.contact_email || 'Unknown'} | Loc: ${item.location}</p>
                     </div>
                     <button onclick="deleteItem(${idx})" class="bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-red-600">Delete</button>
                 </div>
@@ -390,7 +390,7 @@
             document.getElementById('modal-title').innerText = selectedItem.title;
             document.getElementById('modal-location').innerText = selectedItem.location;
             document.getElementById('modal-desc').innerText = selectedItem.description;
-            document.getElementById('modal-contact').innerText = selectedItem.contact || 'Verified BITSian';
+            document.getElementById('modal-contact').innerText = selectedItem.contact_email || 'Verified BITSian';
             
             const badge = document.getElementById('modal-type-badge');
             const isLost = (selectedItem.type || 'lost') === 'lost';
@@ -420,7 +420,7 @@
                 existingChat = {
                     id: 'chat_' + Date.now(),
                     itemTitle: selectedItem.title,
-                    participants: `${currentUser.email} & ${selectedItem.contact || 'Finder'}`,
+                    participants: `${currentUser.email} & ${selectedItem.contact_email || 'Finder'}`,
                     messages: [
                         { sender: 'System', text: `Secure channel opened for "${selectedItem.title}". Monitored by campus administration.` }
                     ]
