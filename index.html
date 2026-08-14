@@ -120,13 +120,26 @@
                 <div class="flex items-center gap-2 text-red-700 font-bold text-xs mb-1">
                     <i class="fa-solid fa-shield-halved"></i> Campus Administrator Control Panel
                 </div>
-                <p class="text-[11px] text-red-600">You have full control to moderate posts, delete malicious listings, and audit student chats.</p>
+                <p class="text-[11px] text-red-600">Moderate posts, delete listings, and audit active student chats below.</p>
             </div>
 
+            <!-- Posts Management -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
-                <h3 class="font-bold text-xs text-bitsNavy">All Active Campus Listings (Admin Moderation)</h3>
+                <h3 class="font-bold text-xs text-bitsNavy flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-bitsGold"></i> Active Campus Listings
+                </h3>
                 <div id="admin-items-list" class="space-y-2">
                     <!-- Admin posts control list injected here -->
+                </div>
+            </div>
+
+            <!-- Chat Auditing Section -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <h3 class="font-bold text-xs text-bitsNavy flex items-center gap-1.5">
+                    <i class="fa-solid fa-comments text-bitsGold"></i> Audited Active Chats
+                </h3>
+                <div id="admin-chats-list" class="space-y-2">
+                    <!-- Admin active chat audits list injected here -->
                 </div>
             </div>
         </section>
@@ -137,7 +150,7 @@
                 <div>
                     <h3 id="chat-item-title" class="font-bold text-xs">Secure Item Chat</h3>
                     <p class="text-[9px] text-bitsGold flex items-center gap-1 mt-0.5">
-                        <i class="fa-solid fa-shield-halved"></i> Admin Monitored for Security
+                        <i class="fa-solid fa-shield-halved"></i> Admin Monitored in Real-Time
                     </p>
                 </div>
                 <button onclick="switchScreen(currentUser?.isAdmin ? 'admin' : 'home')" class="text-xs bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg">Back</button>
@@ -195,7 +208,21 @@
         let currentUser = null;
         let allItemsCache = [];
         let selectedItem = null;
-        let chatMessagesData = [];
+        
+        // Global central database of active chats for Admin auditing
+        let activeChats = [
+            {
+                id: 'chat_1',
+                itemTitle: 'CASIO Calculator',
+                participants: 'f20230123@pilani.bits-pilani.ac.in & finder@bits-pilani.ac.in',
+                messages: [
+                    { sender: 'System', text: 'Secure channel opened for "CASIO Calculator".' },
+                    { sender: 'f20230123@pilani.bits-pilani.ac.in', text: 'Hi! I lost this calculator near NAB.' },
+                    { sender: 'finder@bits-pilani.ac.in', text: 'Hey, I found it on desk 4. You can pick it up!' }
+                ]
+            }
+        ];
+        let currentActiveChat = null;
 
         function switchScreen(screenId) {
             if (!currentUser && screenId !== 'auth') screenId = 'auth';
@@ -212,6 +239,11 @@
             } else {
                 header.classList.remove('hidden');
                 nav.classList.remove('hidden');
+            }
+
+            if (currentUser?.isAdmin && screenId === 'admin') {
+                renderAdminList();
+                renderAdminChats();
             }
 
             document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('text-bitsNavy'); b.classList.add('text-gray-400'); });
@@ -234,6 +266,7 @@
                 renderFeed(allItemsCache);
                 if (currentUser?.isAdmin) {
                     renderAdminList();
+                    renderAdminChats();
                 }
             } catch (e) {
                 document.getElementById('items-feed').innerHTML = '<div class="p-4 text-center text-xs text-gray-400">Failed to load API feed.</div>';
@@ -255,7 +288,7 @@
 
         function renderAdminList() {
             const container = document.getElementById('admin-items-list');
-            if (!allItemsCache.length) { container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No active posts.</p>'; return; }
+            if (!allItemsCache.length) { container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No active posts.</p>'; return; }
             container.innerHTML = allItemsCache.map((item, idx) => `
                 <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                     <div>
@@ -265,6 +298,28 @@
                     <button onclick="deleteItem(${idx})" class="bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-red-600">Delete</button>
                 </div>
             `).join('');
+        }
+
+        function renderAdminChats() {
+            const container = document.getElementById('admin-chats-list');
+            if (!activeChats.length) { container.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No ongoing chats.</p>'; return; }
+            container.innerHTML = activeChats.map((chat, idx) => `
+                <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                    <div>
+                        <h4 class="font-bold text-xs text-bitsNavy">${chat.itemTitle}</h4>
+                        <p class="text-[10px] text-gray-500 truncate max-w-[200px]">Users: ${chat.participants}</p>
+                        <p class="text-[9px] text-bitsGold font-medium mt-0.5">${chat.messages.length} messages logged</p>
+                    </div>
+                    <button onclick="auditChat(${idx})" class="bg-bitsNavy text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-opacity-90">Audit Chat</button>
+                </div>
+            `).join('');
+        }
+
+        function auditChat(index) {
+            currentActiveChat = activeChats[index];
+            document.getElementById('chat-item-title').innerText = `Auditing: ${currentActiveChat.itemTitle}`;
+            renderChatMessages();
+            switchScreen('chat');
         }
 
         async function deleteItem(index) {
@@ -311,18 +366,30 @@
 
         function openChatFromModal() {
             closeModal();
+            // Check if chat already exists for this item, else create one
+            let existingChat = activeChats.find(c => c.itemTitle === selectedItem.title);
+            if (!existingChat) {
+                existingChat = {
+                    id: 'chat_' + Date.now(),
+                    itemTitle: selectedItem.title,
+                    participants: `${currentUser.email} & ${selectedItem.contact || 'Finder'}`,
+                    messages: [
+                        { sender: 'System', text: `Secure channel opened for "${selectedItem.title}". Monitored by campus administration.` }
+                    ]
+                };
+                activeChats.push(existingChat);
+            }
+            currentActiveChat = existingChat;
             document.getElementById('chat-item-title').innerText = `Chat: ${selectedItem.title}`;
-            chatMessagesData = [
-                { sender: 'System', text: `Secure channel opened for "${selectedItem.title}". Note: All chats are logged for student security and review by campus administration.` }
-            ];
             renderChatMessages();
             switchScreen('chat');
         }
 
         function renderChatMessages() {
             const container = document.getElementById('chat-messages');
-            container.innerHTML = chatMessagesData.map(m => `
-                <div class="p-2 rounded-xl ${m.sender === 'System' ? 'bg-yellow-50 text-yellow-800 text-[10px] text-center font-medium border border-yellow-200' : m.sender === currentUser?.email ? 'bg-bitsNavy text-white ml-auto max-w-[80%]' : 'bg-gray-100 text-gray-800 mr-auto max-w-[80%]'}">
+            if (!currentActiveChat) return;
+            container.innerHTML = currentActiveChat.messages.map(m => `
+                <div class="p-2 rounded-xl ${m.sender === 'System' ? 'bg-yellow-50 text-yellow-800 text-[10px] text-center font-medium border border-yellow-200' : m.sender === currentUser?.email ? 'bg-bitsNavy text-white ml-auto max-w-[80%]' : currentUser?.isAdmin ? 'bg-blue-50 text-blue-900 border border-blue-200 mr-auto max-w-[80%]' : 'bg-gray-100 text-gray-800 mr-auto max-w-[80%]'}">
                     ${m.sender !== 'System' ? `<div class="text-[9px] opacity-70 mb-0.5">${m.sender}</div>` : ''}
                     <div>${m.text}</div>
                 </div>
@@ -333,8 +400,8 @@
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const val = input.value.trim();
-            if (!val) return;
-            chatMessagesData.push({ sender: currentUser.email, text: val });
+            if (!val || !currentActiveChat) return;
+            currentActiveChat.messages.push({ sender: currentUser.email, text: val });
             input.value = '';
             renderChatMessages();
         }
@@ -397,6 +464,7 @@
 
         function handleLogout() {
             currentUser = null;
+            currentActiveChat = null;
             document.getElementById('auth-email').value = '';
             document.getElementById('auth-password').value = '';
             document.getElementById('nav-admin').classList.add('hidden');
