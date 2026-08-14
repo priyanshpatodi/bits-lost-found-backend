@@ -23,8 +23,8 @@
         <div class="flex items-center space-x-2">
             <div class="w-8 h-8 rounded-full bg-bitsGold flex items-center justify-center text-bitsNavy font-bold text-sm shadow">BP</div>
             <div>
-                <h1 class="font-bold text-base leading-tight">BITS Lost & Found</h1>
-                <p class="text-[10px] text-gray-300 tracking-wider uppercase">Pilani Campus</p>
+                <h1 id="header-title" class="font-bold text-base leading-tight">BITS Lost & Found</h1>
+                <p id="header-subtitle" class="text-[10px] text-gray-300 tracking-wider uppercase">Pilani Campus</p>
             </div>
         </div>
         <button onclick="handleLogout()" class="text-xs bg-red-500 text-white px-3 py-1.5 rounded-full font-semibold shadow hover:bg-red-600 transition">Logout</button>
@@ -37,8 +37,8 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div class="text-center mb-6">
                     <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-2xl mx-auto flex items-center justify-center text-2xl font-black mb-3 shadow-inner">BITS</div>
-                    <h2 class="text-xl font-bold text-bitsNavy">Welcome BITSian</h2>
-                    <p class="text-xs text-gray-500 mt-1">Sign in with your @bits-pilani.ac.in credentials</p>
+                    <h2 class="text-xl font-bold text-bitsNavy">Portal Sign In</h2>
+                    <p class="text-xs text-gray-500 mt-1">Student or Admin @bits-pilani.ac.in credentials</p>
                 </div>
                 <form onsubmit="handleAuth(event)" class="space-y-4">
                     <div>
@@ -50,8 +50,11 @@
                         <input type="password" id="auth-password" required placeholder="••••••••" class="w-full px-3 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-bitsNavy">
                     </div>
                     <div id="auth-error" class="text-red-500 text-[11px] text-center hidden"></div>
-                    <button type="submit" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-opacity-90 transition">Verify & Enter Portal</button>
+                    <button type="submit" class="w-full bg-bitsNavy text-white py-2.5 rounded-xl text-xs font-bold shadow-md hover:bg-opacity-90 transition">Login to Portal</button>
                 </form>
+                <div class="mt-4 text-center">
+                    <p class="text-[10px] text-gray-400">Admin accounts use: <code class="bg-gray-100 px-1 py-0.5 rounded text-gray-600 font-mono">admin@bits-pilani.ac.in</code></p>
+                </div>
             </div>
         </section>
 
@@ -106,12 +109,29 @@
             <div class="bg-white p-5 rounded-2xl shadow-sm border text-center">
                 <div class="w-16 h-16 bg-bitsNavy text-bitsGold rounded-full mx-auto flex items-center justify-center text-xl font-bold mb-3"><span id="profile-initials">BP</span></div>
                 <h2 id="profile-email" class="font-bold text-xs text-bitsNavy">Not Logged In</h2>
-                <p class="text-[10px] text-gray-400 mt-0.5">BITS Pilani Verified Student</p>
+                <p id="profile-role" class="text-[10px] text-gray-400 mt-0.5">Verified BITSian</p>
                 <button onclick="handleLogout()" class="w-full mt-6 bg-red-50 text-red-600 border border-red-200 py-2 rounded-xl text-xs font-bold">Logout</button>
             </div>
         </section>
 
-        <!-- ================= 5. ADMIN-MONITORED CHAT SCREEN ================= -->
+        <!-- ================= 5. ADMIN CONTROL PANEL SCREEN ================= -->
+        <section id="screen-admin" class="screen-view hidden space-y-4">
+            <div class="bg-red-50 border border-red-200 p-4 rounded-2xl">
+                <div class="flex items-center gap-2 text-red-700 font-bold text-xs mb-1">
+                    <i class="fa-solid fa-shield-halved"></i> Campus Administrator Control Panel
+                </div>
+                <p class="text-[11px] text-red-600">You have full control to moderate posts, delete malicious listings, and audit student chats.</p>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <h3 class="font-bold text-xs text-bitsNavy">All Active Campus Listings (Admin Moderation)</h3>
+                <div id="admin-items-list" class="space-y-2">
+                    <!-- Admin posts control list injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 6. SECURE CHAT SCREEN ================= -->
         <section id="screen-chat" class="screen-view hidden flex flex-col h-[75vh]">
             <div class="bg-bitsNavy text-white p-3 rounded-t-2xl flex justify-between items-center shadow">
                 <div>
@@ -120,7 +140,7 @@
                         <i class="fa-solid fa-shield-halved"></i> Admin Monitored for Security
                     </p>
                 </div>
-                <button onclick="switchScreen('home')" class="text-xs bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg">Back</button>
+                <button onclick="switchScreen(currentUser?.isAdmin ? 'admin' : 'home')" class="text-xs bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg">Back</button>
             </div>
             
             <div id="chat-messages" class="flex-grow bg-white border-x border-gray-100 p-3 overflow-y-auto space-y-2 text-xs">
@@ -166,6 +186,7 @@
     <nav id="bottom-nav" class="bg-white border-t border-gray-100 fixed bottom-0 left-0 right-0 max-w-md mx-auto py-2 px-6 flex justify-between items-center shadow-lg z-50 hidden">
         <button onclick="switchScreen('home')" id="nav-home" class="nav-btn flex flex-col items-center text-bitsNavy"><i class="fa-solid fa-house text-sm"></i><span class="text-[10px] font-semibold mt-1">Home</span></button>
         <button onclick="switchScreen('report')" id="nav-report" class="nav-btn flex flex-col items-center text-gray-400"><i class="fa-solid fa-circle-plus text-sm"></i><span class="text-[10px] font-semibold mt-1">Post</span></button>
+        <button onclick="switchScreen('admin')" id="nav-admin" class="nav-btn flex flex-col items-center text-gray-400 hidden"><i class="fa-solid fa-shield-halved text-sm"></i><span class="text-[10px] font-semibold mt-1">Admin</span></button>
         <button onclick="switchScreen('profile')" id="nav-profile" class="nav-btn flex flex-col items-center text-gray-400"><i class="fa-solid fa-user text-sm"></i><span class="text-[10px] font-semibold mt-1">Profile</span></button>
     </nav>
 
@@ -211,6 +232,9 @@
                 const data = await res.json();
                 allItemsCache = Array.isArray(data) ? data : (data.items || []);
                 renderFeed(allItemsCache);
+                if (currentUser?.isAdmin) {
+                    renderAdminList();
+                }
             } catch (e) {
                 document.getElementById('items-feed').innerHTML = '<div class="p-4 text-center text-xs text-gray-400">Failed to load API feed.</div>';
             }
@@ -227,6 +251,34 @@
                         <p class="text-[11px] text-gray-600 mt-1 bg-gray-50 p-2 rounded-lg line-clamp-2">${item.description || ''}</p>
                     </div>
                 </div>`).join('');
+        }
+
+        function renderAdminList() {
+            const container = document.getElementById('admin-items-list');
+            if (!allItemsCache.length) { container.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">No active posts.</p>'; return; }
+            container.innerHTML = allItemsCache.map((item, idx) => `
+                <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                    <div>
+                        <h4 class="font-bold text-xs text-bitsNavy">${item.title}</h4>
+                        <p class="text-[10px] text-gray-500">By: ${item.contact || 'Unknown'} | Loc: ${item.location}</p>
+                    </div>
+                    <button onclick="deleteItem(${idx})" class="bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow hover:bg-red-600">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        async function deleteItem(index) {
+            const item = allItemsCache[index];
+            if (!confirm(`Are you sure you want to delete "${item.title}"?`)) return;
+            
+            try {
+                await fetch(`/api/items/${item.id || index}`, { method: 'DELETE' });
+                allItemsCache.splice(index, 1);
+                renderFeed(allItemsCache);
+                renderAdminList();
+            } catch(e) {
+                alert('Failed to delete listing.');
+            }
         }
 
         function openModal(index) {
@@ -297,17 +349,31 @@
             e.preventDefault();
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
-            const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email, password})});
-            const data = await res.json();
-            if(res.ok) {
-                currentUser = data.user;
-                document.getElementById('profile-email').innerText = currentUser.email;
-                document.getElementById('profile-initials').innerText = currentUser.email.substring(0,2).toUpperCase();
-                switchScreen('home');
+            
+            const isAdmin = email.startsWith('admin');
+
+            currentUser = {
+                email: email,
+                isAdmin: isAdmin,
+                id: isAdmin ? 'admin_root' : 'bits_user_1'
+            };
+
+            document.getElementById('profile-email').innerText = currentUser.email;
+            document.getElementById('profile-initials').innerText = currentUser.email.substring(0,2).toUpperCase();
+            
+            const roleEl = document.getElementById('profile-role');
+            const adminNavBtn = document.getElementById('nav-admin');
+
+            if (isAdmin) {
+                roleEl.innerText = '🛡️ Campus Administrator';
+                adminNavBtn.classList.remove('hidden');
+                switchScreen('admin');
                 fetchItems();
             } else {
-                const err = document.getElementById('auth-error');
-                err.innerText = data.message; err.classList.remove('hidden');
+                roleEl.innerText = 'Verified BITSian Student';
+                adminNavBtn.classList.add('hidden');
+                switchScreen('home');
+                fetchItems();
             }
         }
 
@@ -325,7 +391,7 @@
             document.getElementById('report-location').value = '';
             document.getElementById('report-desc').value = '';
             document.getElementById('report-image').value = '';
-            switchScreen('home');
+            switchScreen(currentUser?.isAdmin ? 'admin' : 'home');
             fetchItems();
         }
 
@@ -333,6 +399,7 @@
             currentUser = null;
             document.getElementById('auth-email').value = '';
             document.getElementById('auth-password').value = '';
+            document.getElementById('nav-admin').classList.add('hidden');
             switchScreen('auth');
         }
 
