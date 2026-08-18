@@ -14,17 +14,8 @@ let currentStatusType = 'lost';
 let allItemsCache = [];
 let selectedItem = null;
 let currentActiveChat = null;
-let activeChats = [
-  {
-    id: 'chat_1',
-    itemTitle: 'Sample Item',
-    participants: 'f20261066@pilani.bits-pilani.ac.in & finder@bits-pilani.ac.in',
-    messages: [
-      { sender: 'System', text: 'Secure channel opened.' },
-      { sender: 'f20261066@pilani.bits-pilani.ac.in', text: 'Hi! Is this available?' }
-    ]
-  }
-];
+let activeChats = [];
+let chatLoading = false;
 
 /* ===================== TOASTS ===================== */
 function toast(message, type = 'info') {
@@ -222,12 +213,33 @@ function tplReport() {
       </form>
     </div>`;
 }
-
 function tplChats() {
   return `
     <div class="screen-view">
-      <h2 class="section-title">Secure Conversations</h2>
-      <div id="chats-list-container"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div class="eyebrow">Encrypted-style campus channels</div>
+          <h2 class="section-title" style="margin-top:4px;margin-bottom:0;">
+            Secure Conversations
+          </h2>
+        </div>
+
+        <div class="chat-live-indicator">
+          <span></span>
+          SYNCED
+        </div>
+      </div>
+
+      <div
+        id="chats-list-container"
+      >
+        <div class="chat-loading glass">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          Loading conversations...
+        </div>
+      </div>
+
     </div>`;
 }
 
@@ -1037,21 +1049,213 @@ function renderAdminList() {
 }
 
 function renderAdminChats() {
-  const container = document.getElementById('admin-chats-list');
+
+  const container =
+    document.getElementById(
+      'admin-chats-list'
+    );
+
   if (!container) return;
-  if (!activeChats.length) {
-    container.innerHTML = `<p class="empty-state">No ongoing chats.</p>`;
-    return;
+
+  container.innerHTML = `
+    <div class="chat-loading glass">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      Loading persistent chat audit...
+    </div>
+  `;
+
+  try {
+
+    if (!supabaseClient) {
+      throw new Error(
+        'Supabase client unavailable'
+      );
+    }
+
+    /*
+     * Admin gets the complete message stream.
+     */
+    const response =
+      await supabaseClient
+        .from('messages')
+        .select(`
+          id,
+          item_id,
+          sender_email,
+          message,
+          created_at,
+          items (
+            id,
+            title,
+            contact_email
+          )
+        `)
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
+
+    if (response.error) {
+      throw response.error;
+    }
+
+    const messages =
+      response.data || [];
+
+    if (!messages.length) {
+
+      container.innerHTML = `
+        <p class="empty-state">
+          No persistent conversations yet.
+        </p>
+      `;
+
+      return;
+    }
+
+    /*
+     * Group messages by item.
+     */
+    const grouped = {};
+
+    messages.forEach(message => {
+
+      const itemId =
+        message.item_id;
+
+      if (!grouped[itemId]) {
+
+        grouped[itemId] = {
+          itemId,
+          itemTitle:
+            message.items?.title ||
+            'Unknown Item',
+          participants:
+            new Set(),
+          messages: []
+        };
+      }
+
+      grouped[itemId]
+        .participants
+        .add(message.sender_email);
+
+      grouped[itemId]
+        .messages
+        .push(message);
+    });
+
+    const conversations =
+      Object.values(grouped);
+
+    container.innerHTML =
+      conversations
+        .map((chat, index) => {
+
+          const latest =
+            chat.messages[0];
+
+          return `
+            <div
+              class="persistent-admin-chat"
+            >
+
+              <div
+                class="persistent-chat-icon"
+              >
+                <i class="fa-solid fa-message"></i>
+              </div>
+
+              <div
+                class="persistent-chat-main"
+              >
+
+                <div
+                  class="persistent-chat-top"
+                >
+                  <h3>
+                    ${escapeHtml(
+                      chat.itemTitle
+                    )}
+                  </h3>
+
+                  <span>
+                    ${formatChatTime(
+                      latest.created_at
+                    )}
+                  </span>
+                </div>
+
+                <p>
+                  ${escapeHtml(
+                    latest.message
+                  )}
+                </p>
+
+                <div
+                  class="persistent-chat-meta"
+                >
+                  <i
+                    class="fa-solid fa-users"
+                  ></i>
+
+                  ${
+                    chat.participants.size
+                  }
+                  participant${
+                    chat.participants.size === 1
+                      ? ''
+                      : 's'
+                  }
+
+                  •
+
+                  ${
+                    chat.messages.length
+                  }
+                  message${
+                    chat.messages.length === 1
+                      ? ''
+                      : 's'
+                  }
+                </div>
+
+              </div>
+
+              <button
+                onclick="adminOpenPersistentChat(${index})"
+                class="btn btn-cyan btn-sm"
+              >
+                Audit
+              </button>
+
+            </div>
+          `;
+        })
+        .join('');
+
+    /*
+     * Keep the complete conversations available
+     * for the audit button.
+     */
+    window.adminChatAuditData =
+      conversations;
+
+  } catch (error) {
+
+    console.error(
+      'Admin chat audit error:',
+      error
+    );
+
+    container.innerHTML = `
+      <p class="empty-state">
+        Could not load chat audit data.
+      </p>
+    `;
   }
-  container.innerHTML = activeChats.map((chat, idx) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04);padding:12px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;">
-      <div>
-        <h4 style="font-size:12px;font-weight:700;">${escapeHtml(chat.itemTitle)}</h4>
-        <p class="muted" style="font-size:10px;">Users: ${escapeHtml(chat.participants)}</p>
-        <p style="font-size:9px;color:var(--gold);font-weight:600;margin-top:2px;">${chat.messages.length} messages logged</p>
-      </div>
-      <button onclick="auditChat(${idx})" class="btn btn-cyan btn-sm">Audit Chat</button>
-    </div>`).join('');
 }
 
 async function deleteItem(index) {
@@ -1098,21 +1302,561 @@ function openModal(index) {
 function closeModal() {
   document.getElementById('item-modal').classList.add('hidden');
 }
+/* ===================== PERSISTENT CHAT ENGINE ===================== */
 
-/* ===================== CHATS ===================== */
-function renderChatsList() {
-  const container = document.getElementById('chats-list-container');
-  if (!container) return;
-  if (!activeChats.length) {
-    container.innerHTML = `<p class="empty-state">No conversations yet.</p>`;
+/**
+ * Loads all conversations belonging to the current user.
+ *
+ * A conversation is represented by an item.
+ * Messages are stored permanently in Supabase.
+ */
+async function loadUserChats() {
+  if (!currentUser || !supabaseClient) {
+    activeChats = [];
     return;
   }
-  container.innerHTML = activeChats.map((chat, idx) => `
-    <div onclick="auditChat(${idx})" class="glass item-card" style="margin-bottom:10px;">
-      <h3 class="item-title">${escapeHtml(chat.itemTitle)}</h3>
-      <p class="muted" style="font-size:10px;margin-top:4px;">${escapeHtml(chat.participants)}</p>
-      <p style="font-size:9px;color:var(--gold);font-weight:600;margin-top:4px;">${chat.messages.length} messages</p>
-    </div>`).join('');
+
+  try {
+    chatLoading = true;
+
+    /*
+     * Find messages sent by the current user.
+     * We use these item IDs to discover conversations.
+     */
+    const ownMessagesResponse = await supabaseClient
+      .from('messages')
+      .select('item_id')
+      .eq('sender_email', currentUser.email);
+
+    if (ownMessagesResponse.error) {
+      console.error(
+        'Could not load user conversations:',
+        ownMessagesResponse.error
+      );
+
+      activeChats = [];
+      return;
+    }
+
+    const ownItemIds = [
+      ...new Set(
+        (ownMessagesResponse.data || [])
+          .map(row => row.item_id)
+          .filter(Boolean)
+      )
+    ];
+
+    /*
+     * If the current user has no messages yet,
+     * there are no persisted conversations to display.
+     */
+    if (!ownItemIds.length) {
+      activeChats = [];
+      return;
+    }
+
+    /*
+     * Fetch the corresponding items.
+     */
+    const itemsResponse = await supabaseClient
+      .from('items')
+      .select('*')
+      .in('id', ownItemIds);
+
+    if (itemsResponse.error) {
+      console.error(
+        'Could not load chat items:',
+        itemsResponse.error
+      );
+
+      activeChats = [];
+      return;
+    }
+
+    /*
+     * Build each conversation from its item.
+     */
+    const chats = [];
+
+    for (const item of itemsResponse.data || []) {
+
+      const messagesResponse = await supabaseClient
+        .from('messages')
+        .select('*')
+        .eq('item_id', item.id)
+        .order('created_at', {
+          ascending: true
+        });
+
+      if (messagesResponse.error) {
+        console.error(
+          `Could not load messages for item ${item.id}:`,
+          messagesResponse.error
+        );
+
+        continue;
+      }
+
+      const messages = messagesResponse.data || [];
+
+      const participants = [
+        ...new Set(
+          messages
+            .map(message => message.sender_email)
+            .filter(Boolean)
+        )
+      ];
+
+      /*
+       * Add the item's reporter as a participant too.
+       */
+      if (
+        item.contact_email &&
+        !participants.includes(item.contact_email)
+      ) {
+        participants.push(item.contact_email);
+      }
+
+      chats.push({
+        id: `chat_${item.id}`,
+        itemId: item.id,
+        itemTitle: item.title || 'Item',
+        participants: participants.join(' & '),
+        messages
+      });
+    }
+
+    activeChats = chats;
+
+  } catch (error) {
+
+    console.error(
+      'Persistent chat loading error:',
+      error
+    );
+
+    activeChats = [];
+
+  } finally {
+    chatLoading = false;
+  }
+}
+
+/**
+ * Loads one conversation directly from Supabase.
+ */
+async function loadChatForItem(itemId) {
+  if (!supabaseClient || !itemId) {
+    return null;
+  }
+
+  try {
+
+    const itemResponse = await supabaseClient
+      .from('items')
+      .select('*')
+      .eq('id', itemId)
+      .single();
+
+    if (itemResponse.error) {
+      console.error(
+        'Could not load chat item:',
+        itemResponse.error
+      );
+
+      return null;
+    }
+
+    const messagesResponse = await supabaseClient
+      .from('messages')
+      .select('*')
+      .eq('item_id', itemId)
+      .order('created_at', {
+        ascending: true
+      });
+
+    if (messagesResponse.error) {
+      console.error(
+        'Could not load chat messages:',
+        messagesResponse.error
+      );
+
+      return null;
+    }
+
+    const messages = messagesResponse.data || [];
+
+    const participants = [
+      ...new Set(
+        messages
+          .map(message => message.sender_email)
+          .filter(Boolean)
+      )
+    ];
+
+    if (
+      itemResponse.data.contact_email &&
+      !participants.includes(itemResponse.data.contact_email)
+    ) {
+      participants.push(
+        itemResponse.data.contact_email
+      );
+    }
+
+    return {
+      id: `chat_${itemId}`,
+      itemId,
+      itemTitle: itemResponse.data.title || 'Item',
+      participants: participants.join(' & '),
+      messages
+    };
+
+  } catch (error) {
+
+    console.error(
+      'Chat loading exception:',
+      error
+    );
+
+    return null;
+  }
+}
+
+/**
+ * Opens or creates a persistent conversation.
+ */
+async function openPersistentChat(item) {
+
+  if (!currentUser || !item || !item.id) {
+    toast(
+      'Unable to open this conversation.',
+      'error'
+    );
+
+    return;
+  }
+
+  currentActiveChat = await loadChatForItem(
+    item.id
+  );
+
+  /*
+   * The chat does not need a separate database row.
+   * The item itself identifies the conversation.
+   */
+  if (!currentActiveChat) {
+
+    currentActiveChat = {
+      id: `chat_${item.id}`,
+      itemId: item.id,
+      itemTitle: item.title || 'Item',
+      participants: [
+        currentUser.email,
+        item.contact_email || 'Verified BITSian'
+      ].join(' & '),
+      messages: []
+    };
+  }
+
+  /*
+   * Add to local cache if not already present.
+   */
+  const existingIndex = activeChats.findIndex(
+    chat => chat.itemId === item.id
+  );
+
+  if (existingIndex >= 0) {
+    activeChats[existingIndex] =
+      currentActiveChat;
+  } else {
+    activeChats.unshift(
+      currentActiveChat
+    );
+  }
+
+  switchScreen('chat');
+
+  const titleElement =
+    document.getElementById('chat-item-title');
+
+  if (titleElement) {
+    titleElement.innerText =
+      'Chat: ' +
+      currentActiveChat.itemTitle;
+  }
+
+  renderChatMessages();
+}
+
+/**
+ * Persists a message in Supabase.
+ */
+async function sendPersistentMessage() {
+
+  const input =
+    document.getElementById('chat-input');
+
+  if (
+    !input ||
+    !currentActiveChat ||
+    !currentUser
+  ) {
+    return;
+  }
+
+  const text = input.value.trim();
+
+  if (!text) {
+    return;
+  }
+
+  if (!currentActiveChat.itemId) {
+    toast(
+      'This conversation is missing its item.',
+      'error'
+    );
+
+    return;
+  }
+
+  const sendButton =
+    document.querySelector(
+      '.chat-input-row button'
+    );
+
+  if (sendButton) {
+    sendButton.disabled = true;
+    sendButton.innerText = 'Sending...';
+  }
+
+  try {
+
+    const response = await supabaseClient
+      .from('messages')
+      .insert([{
+        item_id: currentActiveChat.itemId,
+        sender_email: currentUser.email,
+        message: text
+      }])
+      .select()
+      .single();
+
+    if (response.error) {
+
+      console.error(
+        'Message insert error:',
+        response.error
+      );
+
+      toast(
+        'Message could not be sent.',
+        'error'
+      );
+
+      return;
+    }
+
+    /*
+     * Add the database-generated message to the
+     * current UI immediately.
+     */
+    currentActiveChat.messages.push(
+      response.data
+    );
+
+    input.value = '';
+
+    renderChatMessages();
+
+    /*
+     * Keep the local conversation cache synchronized.
+     */
+    const index = activeChats.findIndex(
+      chat =>
+        chat.itemId ===
+        currentActiveChat.itemId
+    );
+
+    if (index >= 0) {
+      activeChats[index] =
+        currentActiveChat;
+    }
+
+  } catch (error) {
+
+    console.error(
+      'Persistent message exception:',
+      error
+    );
+
+    toast(
+      'Could not send message.',
+      'error'
+    );
+
+  } finally {
+
+    if (sendButton) {
+      sendButton.disabled = false;
+      sendButton.innerText = 'Send';
+    }
+  }
+}
+/* ===================== CHATS ===================== */
+function renderChatsList() {
+
+  const container = document.getElementById(
+      'chats-list-container'
+    );
+
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="chat-loading glass">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      Synchronizing with Supabase...
+    </div>
+  `;
+
+  await loadUserChats();
+
+  if (!container) return;
+
+  if (!activeChats.length) {
+
+    container.innerHTML = `
+      <div class="empty-chat-state glass">
+
+        <div class="empty-chat-icon">
+          <i class="fa-solid fa-comments"></i>
+        </div>
+
+        <h3>No conversations yet</h3>
+
+        <p>
+          Open a listing and start a secure conversation.
+          Your messages will remain available after refreshing
+          or reopening the app.
+        </p>
+
+        <button
+          onclick="switchScreen('home')"
+          class="btn btn-primary"
+          style="margin-top:14px;"
+        >
+          Browse Listings
+        </button>
+
+      </div>
+    `;
+
+    return;
+  }
+
+  container.innerHTML =
+    activeChats.map((chat, index) => {
+
+      const lastMessage =
+        chat.messages &&
+        chat.messages.length
+          ? chat.messages[
+              chat.messages.length - 1
+            ]
+          : null;
+
+      const preview =
+        lastMessage
+          ? lastMessage.message
+          : 'Conversation opened';
+
+      const time =
+        lastMessage &&
+        lastMessage.created_at
+          ? formatChatTime(
+              lastMessage.created_at
+            )
+          : '';
+
+      return `
+        <div
+          onclick="openChatFromList(${index})"
+          class="glass persistent-chat-card"
+        >
+
+          <div class="persistent-chat-icon">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+
+          <div class="persistent-chat-main">
+
+            <div class="persistent-chat-top">
+              <h3>
+                ${escapeHtml(chat.itemTitle)}
+              </h3>
+
+              <span>
+                ${escapeHtml(time)}
+              </span>
+            </div>
+
+            <p>
+              ${escapeHtml(preview)}
+            </p>
+
+            <div class="persistent-chat-meta">
+              <i class="fa-solid fa-user-group"></i>
+              ${escapeHtml(chat.participants)}
+            </div>
+
+          </div>
+
+          <i class="fa-solid fa-chevron-right chat-arrow"></i>
+
+        </div>
+      `;
+    }).join('');
+}
+
+async function openChatFromList(index) {
+
+  const chat = activeChats[index];
+
+  if (!chat || !chat.itemId) {
+    toast(
+      'Conversation could not be opened.',
+      'error'
+    );
+
+    return;
+  }
+
+  const refreshedChat =
+    await loadChatForItem(
+      chat.itemId
+    );
+
+  if (refreshedChat) {
+    currentActiveChat =
+      refreshedChat;
+  } else {
+    currentActiveChat =
+      chat;
+  }
+
+  switchScreen('chat');
+
+  const titleElement =
+    document.getElementById(
+      'chat-item-title'
+    );
+
+  if (titleElement) {
+    titleElement.innerText =
+      'Chat: ' +
+      currentActiveChat.itemTitle;
+  }
+
+  renderChatMessages();
 }
 
 function auditChat(index) {
