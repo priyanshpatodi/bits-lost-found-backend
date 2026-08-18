@@ -325,7 +325,7 @@ async function handleAuth(e) {
   }
 
   if (isAdmin && password !== 'admin123') {
-    errorEl.innerText = 'Incorrect password';
+    errorEl.innerText = 'Incorrect password get out of here';
     errorEl.classList.remove('hidden');
     btn.disabled = false;
     btn.innerText = 'Sign In';
@@ -353,6 +353,473 @@ function handleLogout() {
 }
 
 /* ===================== ITEMS (Supabase) ===================== */
+
+/* ===================== REAL MATCHING ENGINE ===================== */
+
+const MATCH_CONFIG = {
+  minimumScore: 42,
+  maximumResults: 5,
+
+  weights: {
+    category: 30,
+    campus: 20,
+    keywords: 50
+  },
+
+  stopWords: new Set([
+    'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'at',
+    'for', 'with', 'is', 'was', 'were', 'has', 'have', 'had',
+    'my', 'this', 'that', 'it', 'from', 'near', 'found', 'lost',
+    'item', 'please', 'very', 'some', 'also', 'there', 'then',
+    'campus', 'bits', 'pilani'
+  ])
+};
+
+/**
+ * Converts text into meaningful searchable keywords.
+ */
+function tokenizeMatchText(text) {
+  if (!text) return [];
+
+  return String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .map(word => word.trim())
+    .filter(word =>
+      word.length >= 3 &&
+      !MATCH_CONFIG.stopWords.has(word)
+    );
+}
+
+/**
+ * Gives extra importance to distinctive words.
+ */
+function getUniqueKeywords(item) {
+  const text = [
+    item.title || '',
+    item.description || '',
+    item.location || ''
+  ].join(' ');
+
+  return [...new Set(tokenizeMatchText(text))];
+}
+
+/**
+ * Calculates keyword similarity using Jaccard-style overlap.
+ */
+function calculateKeywordScore(lostItem, foundItem) {
+  const lostKeywords = new Set(getUniqueKeywords(lostItem));
+  const foundKeywords = new Set(getUniqueKeywords(foundItem));
+
+  if (!lostKeywords.size || !foundKeywords.size) {
+    return {
+      score: 0,
+      sharedKeywords: []
+    };
+  }
+
+  const sharedKeywords = [...lostKeywords].filter(word =>
+    foundKeywords.has(word)
+  );
+
+  if (!sharedKeywords.length) {
+    return {
+      score: 0,
+      sharedKeywords: []
+    };
+  }
+
+  const union = new Set([
+    ...lostKeywords,
+    ...foundKeywords
+  ]);
+
+  const similarity = sharedKeywords.length / union.size;
+
+  return {
+    score: similarity * MATCH_CONFIG.weights.keywords,
+    sharedKeywords
+  };
+}
+
+/**
+ * Calculates the complete match score.
+ */
+function calculateMatchScore(lostItem, foundItem) {
+  let score = 0;
+  const reasons = [];
+
+  const lostCategory = String(lostItem.category || '').toLowerCase().trim();
+  const foundCategory = String(foundItem.category || '').toLowerCase().trim();
+
+  const lostCampus = String(lostItem.campus || '').toLowerCase().trim();
+  const foundCampus = String(foundItem.campus || '').toLowerCase().trim();
+
+  // Category match
+  if (
+    lostCategory &&
+    foundCategory &&
+    lostCategory === foundCategory
+  ) {
+    score += MATCH_CONFIG.weights.category;
+    reasons.push('Same category');
+  }
+
+  // Campus match
+  if (
+    lostCampus &&
+    foundCampus &&
+    lostCampus === foundCampus
+  ) {
+    score += MATCH_CONFIG.weights.campus;
+    reasons.push('Same campus');
+  }
+
+  // Keyword match
+  const keywordResult = calculateKeywordScore(
+    lostItem,
+    foundItem
+  );
+
+  score += keywordResult.score;
+
+  if (keywordResult.sharedKeywords.length) {
+    reasons.push(
+      `${keywordResult.sharedKeywords.length} matching keyword${
+        keywordResult.sharedKeywords.length === 1 ? '' : 's'
+      }`
+    );
+  }
+
+  return {
+    score: Math.round(score),
+    reasons,
+    sharedKeywords: keywordResult.sharedKeywords
+  };
+}
+
+/**
+ * Finds potential found-item matches for a newly created lost item.
+ */
+async function findPossibleMatches(lostItem) {
+  if (!supabaseClient || !lostItem) {
+    return [];
+  }
+
+  try {
+    const response = await supabaseClient
+      .from('items')
+      .select('*')
+      .eq('type', 'found')
+      .eq('status', 'active')
+      .limit(100);
+
+    if (response.error) {
+      console.error(
+        'Matching engine query error:',
+        response.error
+      );
+
+      return [];
+    }
+
+    const foundItems = response.data || [];
+
+    const scoredMatches = foundItems
+      .map(foundItem => {
+        const result = calculateMatchScore(
+          lostItem,
+          foundItem
+        );
+
+        return {
+          item: foundItem,
+          ...result
+        };
+      })
+      .filter(match =>
+        match.score >= MATCH_CONFIG.minimumScore
+      )
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MATCH_CONFIG.maximumResults);
+
+    return scoredMatches;
+
+  } catch (error) {
+    console.error(
+      'Matching engine exception:',
+      error
+    );
+
+    return [];
+  }
+}
+
+/**
+ * Displays the post-confirmation matching screen.
+ */
+function showMatchConfirmation(lostItem, matches) {
+  const root = document.getElementById('screen-root');
+
+  if (!root) return;
+
+  root.className = 'screen-root screen-view';
+
+  const matchCount = matches.length;
+
+  root.innerHTML = `
+    <div class="match-success-shell">
+
+      <div class="match-success-icon">
+        <i class="fa-solid fa-check"></i>
+      </div>
+
+      <div class="eyebrow">Listing Published</div>
+
+      <h2 class="match-success-title">
+        ${matchCount
+          ? 'We found possible matches.'
+          : 'Your lost item is now live.'}
+      </h2>
+
+      <p class="match-success-subtitle">
+        ${
+          matchCount
+            ? `Our matching engine compared your lost item against active found reports on campus.`
+            : `No strong matches were detected yet. We'll keep your listing available for other students to find.`
+        }
+      </p>
+
+      ${
+        matchCount
+          ? `
+            <div class="match-detection-banner glass">
+              <div class="match-banner-icon">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+              </div>
+
+              <div>
+                <strong>${matchCount} possible match${
+                  matchCount === 1 ? '' : 'es'
+                } detected</strong>
+
+                <span>
+                  Ranked using category, campus and keyword similarity.
+                </span>
+              </div>
+            </div>
+
+            <div class="possible-match-list">
+              ${matches.map((match, index) =>
+                renderPossibleMatch(match, index)
+              ).join('')}
+            </div>
+          `
+          : `
+            <div class="no-match-card glass">
+              <div class="no-match-icon">
+                <i class="fa-solid fa-radar"></i>
+              </div>
+
+              <h3>No strong matches yet</h3>
+
+              <p>
+                Don't worry. Your listing remains searchable and can still
+                match with a future found-item report.
+              </p>
+            </div>
+          `
+      }
+
+      <div class="match-action-row">
+
+        <button
+          class="btn btn-primary"
+          onclick="switchScreen('home')"
+        >
+          <i class="fa-solid fa-compass"></i>
+          Browse All Listings
+        </button>
+
+        <button
+          class="btn btn-ghost"
+          onclick="switchScreen('report')"
+        >
+          <i class="fa-solid fa-plus"></i>
+          Report Another Item
+        </button>
+
+      </div>
+
+    </div>
+  `;
+}
+
+/**
+ * Renders one possible match.
+ */
+function renderPossibleMatch(match, index) {
+  const item = match.item;
+
+  const safeTitle = escapeHtml(
+    item.title || 'Found Item'
+  );
+
+  const safeDescription = escapeHtml(
+    item.description || 'No description provided.'
+  );
+
+  const safeLocation = escapeHtml(
+    item.location || 'Unknown location'
+  );
+
+  const safeCampus = escapeHtml(
+    item.campus || 'Unknown campus'
+  );
+
+  const score = Math.min(
+    99,
+    Math.max(0, match.score)
+  );
+
+  const image = item.image_url
+    ? `
+      <img
+        src="${escapeHtml(item.image_url)}"
+        alt="${safeTitle}"
+        class="possible-match-image"
+      >
+    `
+    : `
+      <div class="possible-match-image-placeholder">
+        <i class="fa-solid fa-box-open"></i>
+      </div>
+    `;
+
+  const reasons = match.reasons.length
+    ? match.reasons.map(reason => `
+        <span class="match-reason">
+          <i class="fa-solid fa-check"></i>
+          ${escapeHtml(reason)}
+        </span>
+      `).join('')
+    : '';
+
+  return `
+    <div
+      class="glass possible-match-card"
+      onclick="openMatchedItem(${index})"
+      data-match-index="${index}"
+    >
+
+      <div class="match-card-image">
+        ${image}
+
+        <div class="match-score">
+          <span>${score}%</span>
+          <small>MATCH</small>
+        </div>
+      </div>
+
+      <div class="possible-match-content">
+
+        <div class="possible-match-top">
+          <div>
+            <div class="eyebrow">
+              Possible Match #${index + 1}
+            </div>
+
+            <h3>
+              ${safeTitle}
+            </h3>
+          </div>
+
+          <span class="badge badge-found">
+            FOUND
+          </span>
+        </div>
+
+        <p class="possible-match-description">
+          ${safeDescription}
+        </p>
+
+        <div class="possible-match-location">
+          <i class="fa-solid fa-location-dot"></i>
+          ${safeLocation}
+          <span>•</span>
+          ${safeCampus}
+        </div>
+
+        <div class="match-reasons">
+          ${reasons}
+        </div>
+
+        <button
+          class="btn btn-cyan match-view-btn"
+          onclick="event.stopPropagation(); openMatchedItem(${index})"
+        >
+          View Possible Match
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+      </div>
+
+    </div>
+  `;
+}
+
+/**
+ * Holds the matches currently displayed on the confirmation screen.
+ */
+let currentPossibleMatches = [];
+
+/**
+ * Opens a matched found item using the existing item modal.
+ */
+function openMatchedItem(index) {
+  const match = currentPossibleMatches[index];
+
+  if (!match || !match.item) return;
+
+  selectedItem = match.item;
+
+  document.getElementById('modal-title').innerText =
+    selectedItem.title || 'Found Item';
+
+  document.getElementById('modal-location').innerText =
+    `${selectedItem.location || ''} (${selectedItem.campus || 'Pilani'})`;
+
+  document.getElementById('modal-desc').innerText =
+    selectedItem.description || '';
+
+  document.getElementById('modal-contact').innerText =
+    selectedItem.contact_email || 'Verified BITSian';
+
+  const badge =
+    document.getElementById('modal-type-badge');
+
+  badge.innerText = 'FOUND ITEM';
+  badge.className = 'badge badge-found';
+
+  const imgContainer =
+    document.getElementById('modal-image-container');
+
+  const imgElem =
+    document.getElementById('modal-image');
+
+  if (selectedItem.image_url) {
+    imgElem.src = selectedItem.image_url;
+    imgContainer.classList.remove('hidden');
+  } else {
+    imgContainer.classList.add('hidden');
+  }
+
+  document
+    .getElementById('item-modal')
+    .classList.remove('hidden');
+}
+
 async function fetchItems() {
   try {
     if (supabaseClient) {
@@ -430,42 +897,125 @@ function handleReportSubmit(e) {
 
 async function saveNewItem(imageUrl) {
   const submitBtn = document.getElementById('submit-btn');
-  submitBtn.innerText = 'Publishing to Supabase...';
+
+  if (!submitBtn) return;
+
+  submitBtn.innerText = 'Publishing...';
   submitBtn.disabled = true;
 
   const newItem = {
-    title: document.getElementById('report-title').value,
-    location: document.getElementById('report-location').value,
-    description: document.getElementById('report-desc').value,
+    title: document.getElementById('report-title').value.trim(),
+    location: document.getElementById('report-location').value.trim(),
+    description: document.getElementById('report-desc').value.trim(),
     category: document.getElementById('report-category').value,
-    campus: document.getElementById('report-campus').value,
+    campus: document.getElementById('report-campus').value.trim(),
     image_url: imageUrl,
     type: currentStatusType,
     status: 'active',
-    contact_email: currentUser ? currentUser.email : 'student@bits-pilani.ac.in'
+    contact_email: currentUser
+      ? currentUser.email
+      : 'student@bits-pilani.ac.in'
   };
 
   try {
     if (!supabaseClient) {
-      toast('Supabase client is not initialized.', 'error');
-    } else {
-      const response = await supabaseClient.from('items').insert([newItem]).select();
-      if (response.error) {
-        console.error('Supabase Insert Error:', response.error);
-        toast('Failed to publish listing: ' + response.error.message, 'error');
-      } else {
-        toast('Listing published!', 'success');
-      }
+      toast(
+        'Supabase client is not initialized.',
+        'error'
+      );
+
+      submitBtn.innerText = 'Publish Listing';
+      submitBtn.disabled = false;
+      return;
     }
-  } catch (e) {
-    console.error('Exception during Supabase save:', e);
-    toast('An error occurred while saving to database.', 'error');
+
+    const response = await supabaseClient
+      .from('items')
+      .insert([newItem])
+      .select()
+      .single();
+
+    if (response.error) {
+      console.error(
+        'Supabase Insert Error:',
+        response.error
+      );
+
+      toast(
+        'Failed to publish listing: ' +
+        response.error.message,
+        'error'
+      );
+
+      submitBtn.innerText = 'Publish Listing';
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const createdItem = response.data;
+
+    toast(
+      'Listing published successfully!',
+      'success'
+    );
+
+    /*
+     * Only LOST items enter the matching engine.
+     * FOUND items simply go back to the feed.
+     */
+    if (createdItem.type !== 'lost') {
+      allItemsCache.unshift(createdItem);
+
+      submitBtn.innerText = 'Publish Listing';
+      submitBtn.disabled = false;
+
+      switchScreen('home');
+      return;
+    }
+
+    /*
+     * Search existing FOUND listings.
+     */
+    submitBtn.innerText = 'Scanning for matches...';
+
+    const matches = await findPossibleMatches(
+      createdItem
+    );
+
+    /*
+     * Save matches globally so the confirmation
+     * screen can open the existing item modal.
+     */
+    currentPossibleMatches = matches;
+
+    /*
+     * Keep local cache synchronized.
+     */
+    allItemsCache.unshift(createdItem);
+
+    /*
+     * Show intelligent matching results.
+     */
+    showMatchConfirmation(
+      createdItem,
+      matches
+    );
+
+  } catch (error) {
+
+    console.error(
+      'Exception during item publishing:',
+      error
+    );
+
+    toast(
+      'An unexpected error occurred while publishing.',
+      'error'
+    );
+
+    submitBtn.innerText = 'Publish Listing';
+    submitBtn.disabled = false;
   }
-
-  submitBtn.innerText = 'Publish Listing';
-  submitBtn.disabled = false;
-
-  switchScreen(currentUser && currentUser.isAdmin ? 'admin' : 'home');
 }
 
 /* ===================== ADMIN ===================== */
