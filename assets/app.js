@@ -112,6 +112,30 @@ function switchScreen(screenId) {
 
   renderScreen(screenId);
 
+  if (
+    screenId === 'chat' &&
+    currentUser &&
+    currentUser.isAdmin
+  ) {
+    const input =
+      document.getElementById('chat-input');
+  
+    const sendButton =
+      document.querySelector(
+        '.chat-input-row button'
+      );
+  
+    if (input) {
+      input.disabled = true;
+      input.placeholder =
+        'Administrator audit mode — read only';
+    }
+  
+    if (sendButton) {
+      sendButton.disabled = true;
+    }
+  }
+
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const activeNav = document.getElementById('nav-' + screenId);
   if (activeNav) activeNav.classList.add('active');
@@ -644,6 +668,7 @@ function showMatchConfirmation(lostItem, matches) {
           `
       }
 
+
       <div class="match-action-row">
         <button
           class="btn btn-primary"
@@ -671,6 +696,38 @@ function showMatchConfirmation(lostItem, matches) {
 
       </div>
 
+      <div class="glass" style="padding:14px;margin-top:16px;text-align:left;">
+  <strong><i class="fa-solid fa-circle-check"></i> Your report is live.</strong>
+  <p class="muted" style="margin-top:5px;font-size:11px;">
+    “${escapeHtml(lostItem.title || 'Your item')}” was published before these possible matches were shown.
+  </p>
+</div>
+
+<div class="match-action-row">
+  <button
+    class="btn btn-primary"
+    onclick="viewPublishedListing()"
+  >
+    <i class="fa-solid fa-eye"></i>
+    View Your Live Listing
+  </button>
+  <button
+    class="btn btn-ghost"
+    onclick="switchScreen('home')"
+  >
+    <i class="fa-solid fa-compass"></i>
+    Browse All Listings
+  </button>
+  <button
+    class="btn btn-ghost"
+    onclick="switchScreen('report')"
+  >
+    <i class="fa-solid fa-plus"></i>
+    Report Another Item
+  </button>
+</div>
+
+
     </div>
   `;
 }
@@ -682,10 +739,23 @@ function viewPublishedListing() {
   }
 
   selectedItem = lastPublishedItem;
+
   document.getElementById('modal-title').innerText = selectedItem.title || 'Item';
   document.getElementById('modal-location').innerText =
     `${selectedItem.location || ''} (${selectedItem.campus || 'Pilani'})`;
   document.getElementById('modal-desc').innerText = selectedItem.description || '';
+
+
+  document.getElementById('modal-title').innerText =
+    selectedItem.title || 'Item';
+
+  document.getElementById('modal-location').innerText =
+    `${selectedItem.location || ''} (${selectedItem.campus || 'Pilani'})`;
+
+  document.getElementById('modal-desc').innerText =
+    selectedItem.description || '';
+
+
   document.getElementById('modal-contact').innerText =
     selectedItem.contact_email || 'Verified BITSian';
 
@@ -696,6 +766,10 @@ function viewPublishedListing() {
 
   const imgContainer = document.getElementById('modal-image-container');
   const imgElem = document.getElementById('modal-image');
+
+
+
+
   if (selectedItem.image_url) {
     imgElem.src = selectedItem.image_url;
     imgContainer.classList.remove('hidden');
@@ -823,7 +897,11 @@ function renderPossibleMatch(match, index) {
  * Holds the matches currently displayed on the confirmation screen.
  */
 let currentPossibleMatches = [];
+
 let lastPublishedItem = null;
+
+
+let lastPublishedItem = [];
 
 /**
  * Opens a matched found item using the existing item modal.
@@ -1040,18 +1118,15 @@ async function saveNewItem(imageUrl) {
     currentPossibleMatches = matches;
     lastPublishedItem = createdItem;
 
-    /*
-     * Keep local cache synchronized.
-     */
-    allItemsCache.unshift(createdItem);
+/*
+ * Keep local cache synchronized before displaying matches.
+ */
+allItemsCache.unshift(createdItem);
 
-    /*
-     * Show intelligent matching results.
-     */
-    showMatchConfirmation(
-      createdItem,
-      matches
-    );
+/*
+ * The listing is already saved. Show matches as optional next steps.
+ */
+   showMatchConfirmation(createdItem, matches);
 
   } catch (error) {
 
@@ -1088,7 +1163,11 @@ function renderAdminList() {
     </div>`).join('');
 }
 
+
 async function renderAdminChats() {
+
+ async function renderAdminChats() {
+
 
   const container =
     document.getElementById(
@@ -1296,6 +1375,81 @@ async function renderAdminChats() {
       </p>
     `;
   }
+}
+
+function adminOpenPersistentChat(index) {
+
+  const chats =
+    window.adminChatAuditData || [];
+
+  const chat =
+    chats[index];
+
+  if (!chat) return;
+
+  currentActiveChat = {
+    id: `audit_${chat.itemId}`,
+    itemId: chat.itemId,
+    itemTitle: chat.itemTitle,
+    participants: [
+      ...chat.participants
+    ].join(' & '),
+
+    /*
+     * Admin messages are read-only audit data.
+     */
+    messages:
+      [...chat.messages]
+        .reverse()
+        .map(message => ({
+          sender_email:
+            message.sender_email,
+
+          message:
+            message.message,
+
+          created_at:
+            message.created_at
+        }))
+  };
+
+  switchScreen('chat');
+
+  const titleElement =
+    document.getElementById(
+      'chat-item-title'
+    );
+
+  if (titleElement) {
+    titleElement.innerText =
+      `Audit: ${chat.itemTitle}`;
+  }
+
+  /*
+   * Disable the chat input while auditing.
+   */
+  const input =
+    document.getElementById(
+      'chat-input'
+    );
+
+  const sendButton =
+    document.querySelector(
+      '.chat-input-row button'
+    );
+
+  if (input) {
+    input.disabled = true;
+    input.placeholder =
+      'Admin audit mode — read only';
+  }
+
+  if (sendButton) {
+    sendButton.disabled = true;
+    sendButton.style.opacity = '.4';
+  }
+
+  renderChatMessages();
 }
 
 async function deleteItem(index) {
