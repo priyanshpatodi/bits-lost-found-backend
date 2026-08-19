@@ -1906,50 +1906,50 @@ function auditChat(index) {
   renderChatMessages();
 }
 
-function openChatFromModal() {
+async function openChatFromModal() {
+  if (!selectedItem) return;
+
   closeModal();
-  let existingChat = activeChats.find(c => c.itemTitle === selectedItem.title);
-  if (!existingChat) {
-    existingChat = {
-      id: 'chat_' + Date.now(),
-      itemTitle: selectedItem.title,
-      participants: `${currentUser.email} & ${selectedItem.contact_email || 'Finder'}`,
-      messages: [
-        { sender: 'System', text: `Secure channel opened for "${selectedItem.title}". Monitored by campus administration.` }
-      ]
-    };
-    activeChats.push(existingChat);
-  }
-  currentActiveChat = existingChat;
-  switchScreen('chat');
-  document.getElementById('chat-item-title').innerText = 'Chat: ' + selectedItem.title;
-  renderChatMessages();
+  await openPersistentChat(selectedItem);
 }
 
 function renderChatMessages() {
   const container = document.getElementById('chat-messages');
+
   if (!container || !currentActiveChat) return;
-  container.innerHTML = currentActiveChat.messages.map(m => {
-    let cls = 'msg-them';
-    if (m.sender === 'System') cls = 'msg-system';
-    else if (currentUser && m.sender === currentUser.email) cls = 'msg-me';
+
+  if (!currentActiveChat.messages.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        No messages yet. Start the conversation securely.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = currentActiveChat.messages.map(message => {
+    const sender = message.sender_email || message.sender || 'Unknown sender';
+    const text = message.message || message.text || '';
+    const cls =
+      currentUser && sender === currentUser.email
+        ? 'msg-me'
+        : 'msg-them';
+
     return `
       <div class="msg ${cls}">
-        ${m.sender !== 'System' ? `<div style="font-size:9px;opacity:.7;margin-bottom:2px;">${escapeHtml(m.sender)}</div>` : ''}
-        <div>${escapeHtml(m.text)}</div>
+        <div style="font-size:9px;opacity:.7;margin-bottom:2px;">
+          ${escapeHtml(sender)}
+        </div>
+        <div>${escapeHtml(text)}</div>
       </div>`;
   }).join('');
+
   container.scrollTop = container.scrollHeight;
 }
 
-function sendChatMessage() {
-  const input = document.getElementById('chat-input');
-  const val = input.value.trim();
-  if (!val || !currentActiveChat) return;
-  currentActiveChat.messages.push({ sender: currentUser.email, text: val });
-  input.value = '';
-  renderChatMessages();
+async function sendChatMessage() {
+  await sendPersistentMessage();
 }
+
 
 /* ===================== UTIL ===================== */
 function escapeHtml(str) {
