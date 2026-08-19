@@ -1949,7 +1949,22 @@ function renderChatMessages() {
 async function sendChatMessage() {
   await sendPersistentMessage();
 }
+function formatChatTime(value) {
+  if (!value) return '';
 
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
 
 /* ===================== UTIL ===================== */
 function escapeHtml(str) {
