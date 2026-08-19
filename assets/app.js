@@ -645,9 +645,16 @@ function showMatchConfirmation(lostItem, matches) {
       }
 
       <div class="match-action-row">
-
         <button
           class="btn btn-primary"
+          onclick="viewPublishedListing()"
+        >
+          <i class="fa-solid fa-eye"></i>
+          View Your Live Listing
+        </button>
+
+        <button
+          class="btn btn-ghost"
           onclick="switchScreen('home')"
         >
           <i class="fa-solid fa-compass"></i>
@@ -666,6 +673,37 @@ function showMatchConfirmation(lostItem, matches) {
 
     </div>
   `;
+}
+
+function viewPublishedListing() {
+  if (!lastPublishedItem) {
+    switchScreen('home');
+    return;
+  }
+
+  selectedItem = lastPublishedItem;
+  document.getElementById('modal-title').innerText = selectedItem.title || 'Item';
+  document.getElementById('modal-location').innerText =
+    `${selectedItem.location || ''} (${selectedItem.campus || 'Pilani'})`;
+  document.getElementById('modal-desc').innerText = selectedItem.description || '';
+  document.getElementById('modal-contact').innerText =
+    selectedItem.contact_email || 'Verified BITSian';
+
+  const isLost = selectedItem.type === 'lost';
+  const badge = document.getElementById('modal-type-badge');
+  badge.innerText = isLost ? 'LOST ITEM' : 'FOUND ITEM';
+  badge.className = `badge ${isLost ? 'badge-lost' : 'badge-found'}`;
+
+  const imgContainer = document.getElementById('modal-image-container');
+  const imgElem = document.getElementById('modal-image');
+  if (selectedItem.image_url) {
+    imgElem.src = selectedItem.image_url;
+    imgContainer.classList.remove('hidden');
+  } else {
+    imgContainer.classList.add('hidden');
+  }
+
+  document.getElementById('item-modal').classList.remove('hidden');
 }
 
 /**
@@ -785,6 +823,7 @@ function renderPossibleMatch(match, index) {
  * Holds the matches currently displayed on the confirmation screen.
  */
 let currentPossibleMatches = [];
+let lastPublishedItem = null;
 
 /**
  * Opens a matched found item using the existing item modal.
@@ -999,6 +1038,7 @@ async function saveNewItem(imageUrl) {
      * screen can open the existing item modal.
      */
     currentPossibleMatches = matches;
+    lastPublishedItem = createdItem;
 
     /*
      * Keep local cache synchronized.
@@ -1048,7 +1088,7 @@ function renderAdminList() {
     </div>`).join('');
 }
 
-function renderAdminChats() {
+async function renderAdminChats() {
 
   const container =
     document.getElementById(
@@ -1703,7 +1743,7 @@ async function sendPersistentMessage() {
   }
 }
 /* ===================== CHATS ===================== */
-function renderChatsList() {
+async function renderChatsList() {
 
   const container = document.getElementById(
       'chats-list-container'
